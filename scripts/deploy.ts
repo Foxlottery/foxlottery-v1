@@ -22,19 +22,10 @@ async function main() {
   console.log("Greeter deployed to:", greeter.address);
 
   const LotteryToken = await ethers.getContractFactory("LotteryToken");
-  const WeeklyLottery = await ethers.getContractFactory("WeeklyLottery");
   const lotteryToken = await LotteryToken.deploy();
-  const weeklyLottery = await WeeklyLottery.deploy(lotteryToken.address);
   const signers = await ethers.getSigners();
   const owner = signers[0];
   lotteryToken.mint(owner.address, "100");
-
-  // add Win Rule
-  weeklyLottery.connect(owner).addWinRule(0.25 * 10 ** 10, 1); // There's a 25% chance 1 of us will win.
-  weeklyLottery.connect(owner).addWinRule(0.05 * 10 ** 10, 2); // There's a 5% chance 2 of us will win.
-  weeklyLottery.connect(owner).addWinRule(0.01 * 10 ** 10, 5); // There's a 1% chance 5 of us will win.
-  weeklyLottery.connect(owner).addWinRule(0.005 * 10 ** 10, 20); // There's a 0.5% chance 20 of us will win.
-  weeklyLottery.connect(owner).addWinRule(0.0001 * 10 ** 10, 2000); // There's a 0.01% chance 2000 of us will win.
 }
 
 // We recommend this pattern to be able to use async/await everywhere
