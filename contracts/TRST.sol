@@ -17,20 +17,19 @@ contract TRST is ERC20, Ownable {
         uint ratio;
         address destinationAddress;
     }
-
     uint public cycle;
-    uint public closeTimestamp = block.timestamp; // env: test
-    // uint closeTimestamp = block.timestamp + cycle; env: prod
+    uint public closeTimestamp = block.timestamp;
+    address[] public participants;
+    IERC20 public erc20;
     RandomSendingRule[] public randomSendingRules;
     DefinitelySendingRule[] public definitelySendingRules;
-    
-    IERC20 public erc20;
-    address[] public participants;
+
 
     // Define the Lottery token contract
     constructor(string memory _name, string memory _symbol, uint _cycle, IERC20 _erc20) ERC20(_name, _symbol) {
         erc20 = _erc20;
         cycle = _cycle;
+        closeTimestamp = block.timestamp + _cycle; // env: prod
     }
 
     function buy(uint256 _amount) public {
@@ -71,44 +70,47 @@ contract TRST is ERC20, Ownable {
     }
 
     function getDestinationAddress() private returns (address) {
-      uint rand = getRand();
-      uint totalCount = 0;
-      address destinationAddress;
-      for (uint i = 0; i < participants.length; i++) {
-          uint participantBalance = balanceOf(participants[i]);
-          totalCount += participantBalance;
-          if (rand <= participantBalance) {
-              destinationAddress = participants[i];
-              break;
-          }
-      }
-      return destinationAddress;
+        uint rand = getRand();
+        uint totalCount = 0;
+        address destinationAddress;
+        for (uint i = 0; i < participants.length; i++) {
+            uint participantBalance = balanceOf(participants[i]);
+            totalCount += participantBalance;
+            if (rand <= participantBalance) {
+                destinationAddress = participants[i];
+                break;
+            }
+         }
+        return destinationAddress;
     }
 
-    function getRand() private returns (uint) {
-        // TODO We should change
-        return participants.length % block.timestamp;
+    function setRandomSendingRule(uint ratio, uint sendingCount) public onlyOwner canChangeRuleByTime canSetRandomSendingRules(ratio, sendingCount) {
+        randomSendingRules.push(RandomSendingRule(ratio, sendingCount));
     }
 
-    function setRandomSendingRule(uint raito, uint sendingCount) public onlyOwner {
-        RandomSendingRule memory randomSendingRule = RandomSendingRule(raito, sendingCount);
-        checkRandomSendingRules(randomSendingRule);
-        randomSendingRules.push(randomSendingRule);
-    }
-
-    function deleteRandomSendintRule(uint index) public onlyOwner {
+    function deleteRandomSendintRule(uint index) public onlyOwner canChangeRuleByTime {
         // Move the last element into the place to delete
         randomSendingRules[index] = randomSendingRules[randomSendingRules.length - 1];
         // Remove the last element
         randomSendingRules.pop();
     }
 
-    function checkRandomSendingRules(RandomSendingRule memory _randomSendingRule) private view {
-        uint totalAmount = currentRandomSendingTotal() + (10 ** 18 / _randomSendingRule.ratio) * _randomSendingRule.sendingCount;
+    modifier canSetRandomSendingRules(uint _ratio, uint _sendingCount) {
+        uint totalAmount = currentRandomSendingTotal() + (10 ** 18 / _ratio) * _sendingCount;
         require(
             totalAmount < 10 ** 18, 
             "TRST: Only less than 100%"
         );
+        _;
+    }
+
+    modifier canChangeRuleByTime() {
+        uint elapsedTime = closeTimestamp - block.timestamp;
+        require(
+            block.timestamp < ((closeTimestamp - cycle) + (elapsedTime / 10)),
+            "TRST: Rule changes can be made up to one-tenth of the end time."
+        );
+        _;
     }
 
     function currentRandomSendingTotal() public view returns(uint) {
@@ -118,5 +120,10 @@ contract TRST is ERC20, Ownable {
             totalAmount += (10 ** 18 / randomSendingRule.ratio) * randomSendingRule.sendingCount;
         }
         return totalAmount;
+    }
+
+    function getRand() private returns (uint) {
+        // TODO We should change
+        return participants.length % block.timestamp;
     }
 }

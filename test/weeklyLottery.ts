@@ -176,4 +176,33 @@ describe("WeeklyLottery", function () {
       this.weeklyLottery.checkDecision();
     });
   });
+
+  describe("canChangeRuleByTime: 時間が過ぎている場合、さらにrandomSendRuleを追加できないこと", function () {
+    beforeEach(async function () {
+      this.lotteryToken = await this.LotteryToken.deploy();
+      this.weeklyLottery = await this.WeeklyLottery.deploy(
+        "WeeklyLottery",
+        "WLT",
+        10,
+        this.lotteryToken.address
+      );
+      this.signers.forEach((user: any) => {
+        this.lotteryToken.mint(user.address, "100");
+        this.lotteryToken
+          .connect(user)
+          .approve(this.weeklyLottery.address, "100");
+        this.weeklyLottery.connect(user).buy("100");
+      });
+    });
+
+    it("エラーが出ること", async function () {
+      await setTimeout(async () => {
+        await expect(
+          this.weeklyLottery.setRandomSendingRule(4, 1)
+        ).to.be.revertedWith(
+          "TRST: Rule changes can be made up to one-tenth of the end time."
+        );
+      }, 4000);
+    });
+  });
 });
