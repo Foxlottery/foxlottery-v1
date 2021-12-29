@@ -92,6 +92,13 @@ contract TRST is ERC20, Ownable {
     function setDefinitelySendingRule(uint ratio, address destinationAddress) public onlyOwner canChangeRuleByTime canSetDefinitelySendingRules(ratio) {
         definitelySendingRules.push(DefinitelySendingRule(ratio, destinationAddress));
     }
+
+    function deleteDefinitelySendingRule(uint index) public onlyOwner canChangeRuleByTime {
+        // Move the last element into the place to delete
+        definitelySendingRules[index] = definitelySendingRules[definitelySendingRules.length - 1];
+        // Remove the last element
+        definitelySendingRules.pop();
+    }
     
     modifier canSetRandomSendingRules(uint _ratio, uint _sendingCount) {
         uint totalAmount = currentRandomSendingTotal() + (10 ** 18 / _ratio) * _sendingCount;

@@ -48,6 +48,34 @@ describe("WeeklyLottery", function () {
     expect(decimals, "18");
   });
 
+  it("setDefinitelySendingRule", async function () {
+    await this.weeklyLottery.setDefinitelySendingRule(
+      1 / 0.2,
+      this.lotteryToken.address
+    );
+    const definitelySendingRule =
+      await this.weeklyLottery.definitelySendingRules(0);
+    expect(definitelySendingRule.ratio).to.equal(1 / 0.2);
+    expect(definitelySendingRule.destinationAddress).to.equal(
+      this.lotteryToken.address
+    );
+  });
+
+  it("deleteDefinitelySendingRule", async function () {
+    await this.weeklyLottery.setDefinitelySendingRule(
+      1 / 0.2,
+      this.lotteryToken.address
+    );
+    await this.weeklyLottery.setDefinitelySendingRule(
+      1 / 0.02,
+      this.lotteryToken.address
+    );
+    await this.weeklyLottery.deleteDefinitelySendingRule(0);
+    const definitelySendingRule =
+      await this.weeklyLottery.definitelySendingRules(0);
+    expect(definitelySendingRule.ratio).to.equal(1 / 0.02);
+  });
+
   it("lottryTokenを持っていること", async function () {
     expect(await this.lotteryToken.balanceOf(this.owner.address)).to.equal(
       "100"

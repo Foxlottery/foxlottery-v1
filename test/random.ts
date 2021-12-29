@@ -19,8 +19,6 @@ describe("random", function () {
 
     // set rule
     const randomSendingRules = [
-      { raito: 1 / 0.0001, sendingCount: 2000 }, // There's a 0.01% chance 2000 of us will win.
-      { raito: 1 / 0.005, sendingCount: 20 }, // There's a 0.5% chance 20 of us will win.
       { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
       { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
       { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
