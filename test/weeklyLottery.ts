@@ -22,11 +22,11 @@ describe("WeeklyLottery", function () {
     );
 
     const randomSendingRules = [
-      { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-      { raito: 1 / 0.005, sendingCount: 20 }, // There's a 0.5% chance 20 of us will win.
       { raito: 1 / 0.0001, sendingCount: 2000 }, // There's a 0.01% chance 2000 of us will win.
+      { raito: 1 / 0.005, sendingCount: 20 }, // There's a 0.5% chance 20 of us will win.
+      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
+      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
+      { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
     ];
     randomSendingRules.forEach(async (rule) => {
       await this.weeklyLottery.setRandomSendingRule(
@@ -56,6 +56,22 @@ describe("WeeklyLottery", function () {
     expect(await this.lotteryToken.balanceOf(this.carol.address)).to.equal(
       "100"
     );
+  });
+
+  it("getNumber", async function () {
+    await this.lotteryToken
+      .connect(this.bob)
+      .approve(this.weeklyLottery.address, "100");
+    await this.weeklyLottery.connect(this.bob).buy("100");
+    console.log(await this.weeklyLottery.getNumber(1));
+  });
+
+  it("getRand", async function () {
+    await this.lotteryToken
+      .connect(this.bob)
+      .approve(this.weeklyLottery.address, "100");
+    await this.weeklyLottery.connect(this.bob).buy("100");
+    console.log(await this.weeklyLottery.getRand());
   });
 
   it("buy lotteryTokenが足りないと、weeklyLottery購入ができないこと", async function () {
@@ -120,7 +136,7 @@ describe("WeeklyLottery", function () {
     expect(
       (await this.weeklyLottery.currentRandomSendingTotal()) / 10 ** 18
     ).to.equal(0.7);
-    await this.weeklyLottery.deleteRandomSendintRule(4);
+    await this.weeklyLottery.deleteRandomSendintRule(0);
     expect(
       (await this.weeklyLottery.currentRandomSendingTotal()) / 10 ** 18
     ).to.equal(0.5);
@@ -130,7 +146,7 @@ describe("WeeklyLottery", function () {
     expect(
       (await this.weeklyLottery.currentRandomSendingTotal()) / 10 ** 18
     ).to.equal(0.7);
-    await this.weeklyLottery.deleteRandomSendintRule(4);
+    await this.weeklyLottery.deleteRandomSendintRule(0);
     expect(
       (await this.weeklyLottery.currentRandomSendingTotal()) / 10 ** 18
     ).to.equal(0.5);
@@ -138,43 +154,6 @@ describe("WeeklyLottery", function () {
     expect(
       (await this.weeklyLottery.currentRandomSendingTotal()) / 10 ** 18
     ).to.equal(0.7);
-  });
-
-  describe("checkDecision", function () {
-    beforeEach(async function () {
-      this.lotteryToken = await this.LotteryToken.deploy();
-      this.weeklyLottery = await this.WeeklyLottery.deploy(
-        "WeeklyLottery",
-        "WLT",
-        86400 * 7,
-        this.lotteryToken.address
-      );
-      this.signers.forEach((user: any) => {
-        this.lotteryToken.mint(user.address, "100");
-        this.lotteryToken
-          .connect(user)
-          .approve(this.weeklyLottery.address, "100");
-        this.weeklyLottery.connect(user).buy("100");
-      });
-
-      const randomSendingRules = [
-        { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-        { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-        { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-        { raito: 1 / 0.005, sendingCount: 20 }, // There's a 0.5% chance 20 of us will win.
-        { raito: 1 / 0.0001, sendingCount: 2000 }, // There's a 0.01% chance 2000 of us will win.
-      ];
-      randomSendingRules.forEach(async (rule) => {
-        await this.weeklyLottery.setRandomSendingRule(
-          rule.raito,
-          rule.sendingCount
-        );
-      });
-    });
-
-    it("当選者決定と分配", async function () {
-      this.weeklyLottery.checkDecision();
-    });
   });
 
   describe("canChangeRuleByTime: 時間が過ぎている場合、さらにrandomSendRuleを追加できないこと", function () {
@@ -203,6 +182,48 @@ describe("WeeklyLottery", function () {
           "TRST: Rule changes can be made up to one-tenth of the end time."
         );
       }, 4000);
+    });
+  });
+
+  describe("canSetDefinitelySendingRules: 100％を越してしまう場合", function () {
+    beforeEach(async function () {
+      this.lotteryToken = await this.LotteryToken.deploy();
+      this.weeklyLottery = await this.WeeklyLottery.deploy(
+        "WeeklyLottery",
+        "WLT",
+        86400 * 7,
+        this.lotteryToken.address
+      );
+      this.signers.forEach((user: any) => {
+        this.lotteryToken.mint(user.address, "100");
+        this.lotteryToken
+          .connect(user)
+          .approve(this.weeklyLottery.address, "100");
+        this.weeklyLottery.connect(user).buy("100");
+      });
+
+      const randomSendingRules = [
+        { raito: 1 / 0.0001, sendingCount: 2000 }, // There's a 0.01% chance 2000 of us will win.
+        { raito: 1 / 0.005, sendingCount: 20 }, // There's a 0.5% chance 20 of us will win.
+        { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
+        { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
+        { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
+      ];
+      randomSendingRules.forEach(async (rule) => {
+        await this.weeklyLottery.setRandomSendingRule(
+          rule.raito,
+          rule.sendingCount
+        );
+      });
+    });
+
+    it("エラーが出ること", async function () {
+      await expect(
+        this.weeklyLottery.setDefinitelySendingRule(
+          1 / 0.5,
+          this.lotteryToken.address
+        )
+      ).to.be.revertedWith("TRST: Only less than 100%");
     });
   });
 });
