@@ -42,10 +42,8 @@ describe("WeeklyLottery", function () {
   it("should have correct name and symbol and decimal", async function () {
     const name = await this.lotteryToken.name();
     const symbol = await this.lotteryToken.symbol();
-    const decimals = await this.lotteryToken.decimals();
     expect(name, "WeeklyLottery");
     expect(symbol, "WLT");
-    expect(decimals, "18");
   });
 
   it("setDefinitelySendingRule", async function () {
