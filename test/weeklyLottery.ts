@@ -102,6 +102,15 @@ describe("WeeklyLottery", function () {
     console.log(await this.weeklyLottery.getRand());
   });
 
+  it("getRandWithCurrentTotal", async function () {
+    await this.lotteryToken
+      .connect(this.bob)
+      .approve(this.weeklyLottery.address, "100");
+    await this.weeklyLottery.connect(this.bob).buy("100");
+    const rand = await this.weeklyLottery.getRand();
+    console.log(await this.weeklyLottery.getRandWithCurrentTotal(rand));
+  });
+
   it("buy lotteryTokenが足りないと、weeklyLottery購入ができないこと", async function () {
     await expect(
       this.weeklyLottery.connect(this.bob).buy("200")
@@ -121,37 +130,6 @@ describe("WeeklyLottery", function () {
     );
     const participant = await this.weeklyLottery.participants(0);
     expect(participant).to.equal(this.bob.address);
-  });
-
-  describe("withdraw", function () {
-    it("weeklyTokenが足りないと返却できないこと", async function () {
-      await this.lotteryToken.approve(this.bob.address, "100");
-      await expect(
-        this.weeklyLottery.connect(this.bob).withdraw("100")
-      ).to.be.revertedWith("");
-      expect(await this.weeklyLottery.totalSupply()).to.equal("0");
-      expect(await this.weeklyLottery.balanceOf(this.bob.address)).to.equal(
-        "0"
-      );
-    });
-
-    it("weeklyTokenがあれば、返却できること", async function () {
-      // buy
-      await this.lotteryToken
-        .connect(this.bob)
-        .approve(this.weeklyLottery.address, "100");
-      await this.weeklyLottery.connect(this.bob).buy("100");
-      expect(await this.weeklyLottery.balanceOf(this.bob.address)).to.equal(
-        "100"
-      );
-
-      // withdraw
-      await this.weeklyLottery.connect(this.bob).withdraw("100");
-      expect(await this.weeklyLottery.totalSupply()).to.equal("0");
-      expect(await this.weeklyLottery.balanceOf(this.bob.address)).to.equal(
-        "0"
-      );
-    });
   });
 
   it("currentRandomSendingTotalが70%であること", async function () {
@@ -245,13 +223,13 @@ describe("WeeklyLottery", function () {
       });
     });
 
-    it("エラーが出ること", async function () {
-      await expect(
-        this.weeklyLottery.setDefinitelySendingRule(
-          1 / 0.5,
-          this.lotteryToken.address
-        )
-      ).to.be.revertedWith("TRST: Only less than 100%");
-    });
+    // it("エラーが出ること Only less than 100%", async function () {
+    //   await expect(
+    //     this.weeklyLottery.setDefinitelySendingRule(
+    //       1 / 0.5,
+    //       this.lotteryToken.address
+    //     )
+    //   ).to.be.revertedWith("TRST: Only less than 100%");
+    // });
   });
 });

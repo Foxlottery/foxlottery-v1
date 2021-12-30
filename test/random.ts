@@ -6,6 +6,7 @@ describe("random", function () {
     this.LotteryToken = await ethers.getContractFactory("LotteryToken");
     this.WeeklyLottery = await ethers.getContractFactory("TRST");
     this.signers = await ethers.getSigners();
+    console.log(this.signers.length);
   });
 
   beforeEach(async function () {
@@ -13,7 +14,7 @@ describe("random", function () {
     this.weeklyLottery = await this.WeeklyLottery.deploy(
       "WeeklyLottery",
       "WLT",
-      70,
+      120,
       this.lotteryToken.address
     );
 

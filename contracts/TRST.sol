@@ -28,7 +28,6 @@ contract TRST is ERC20, Ownable {
     RandomSendingRule[] public randomSendingRules;
     DefinitelySendingRule[] public definitelySendingRules;
 
-
     // Define the Lottery token contract
     constructor(string memory _name, string memory _symbol, uint _cycle, IERC20 _erc20) ERC20(_name, _symbol) {
         require(_cycle >= 10);
@@ -44,20 +43,14 @@ contract TRST is ERC20, Ownable {
         // Lock the Lottery in the contract
         erc20.transferFrom(msg.sender, address(this), _amount);
     }
-
-    function withdraw(uint256 _amount) public {
-        require(balanceOf(msg.sender) >= _amount, "TRST: Not enough erc20 tokens.");
-        _burn(msg.sender, _amount);
-        // unLock the Lottery in the contract
-        erc20.transfer(msg.sender, _amount);
-    }
-     
+    
     // 抽選の確定をするか確認
     function randSend() public {
         require(closeTimestamp <= block.timestamp, "TRST: The time has not yet reached the closing time.");
         uint totalSupply = totalSupply();
+        uint rand = getRand();
         for (uint index = 0; index < randomSendingRules.length; index++) {
-            sendingDestinationDetermination(randomSendingRules[index], totalSupply);
+            sendingDestinationDetermination(randomSendingRules[index], totalSupply, rand);
         }
         for (uint index = 0; index < definitelySendingRules.length; index++) {
             DefinitelySendingRule memory definitelySendingRule = definitelySendingRules[index];
@@ -68,13 +61,27 @@ contract TRST is ERC20, Ownable {
     }
 
     // 当選と配当
-    function sendingDestinationDetermination(RandomSendingRule memory randomSendingRule, uint totalSupply) private {
+    function sendingDestinationDetermination(RandomSendingRule memory randomSendingRule, uint totalSupply, uint rand) private {
         for (uint count = 0; count < randomSendingRule.sendingCount; count++) {
-            uint rand = getRand();
-            address destinationAddress = participants[rand]; // 抽選の確定
+            uint randWithTotal = getRandWithCurrentTotal(rand);
+            address destinationAddress = getDestinationAddress(randWithTotal); // 抽選の確定
             uint dividendAmount = totalSupply / randomSendingRule.ratio;
             erc20.transfer(destinationAddress, dividendAmount);
         }
+    }
+
+    function getDestinationAddress(uint randWithTotal) private view returns(address) {
+        uint number = 0;
+        address account;
+        for (uint count = 0; count < participants.length; count++) {
+            if (number < randWithTotal && randWithTotal > number + balanceOf(participants[count])) {
+                account = participants[count];
+                break;
+            }
+            number += balanceOf(participants[count]);
+        }
+        // Return the winner's address.
+        return account;
     }
 
 
@@ -136,12 +143,18 @@ contract TRST is ERC20, Ownable {
         return totalAmount;
     }
 
+    function getRandWithCurrentTotal(uint rand) public view returns (uint) {
+        return getNumber(getNumber(totalSupply()) + rand);
+    }
+
     function getRand() public view returns (uint) {
-        return getNumber(getNumber(totalSupply()) + getNumber(participants.length) + getNumber(block.timestamp));
+        return getNumber(getNumber(participants.length) +
+                         getNumber(block.timestamp) +
+                         getNumberFromAddress(participants[participants.length / 2]));
     }
 
     function getNumber(uint number) public view returns (uint) {
-        return uint(keccak256(abi.encode(number))) % participants.length;
+        return uint(keccak256(abi.encode(number))) % totalSupply();
     }
 
     function getNumberFromAddress(address account) public pure returns (uint) {
