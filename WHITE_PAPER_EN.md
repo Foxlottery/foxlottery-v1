@@ -11,17 +11,20 @@ Recurring those who retweet and follow as having bought one TRST token, so that 
 # Centralized Lottery Challenges
 - Lack of transparency
 - Low distribution rate
-- A portion of profits are used to contribute to society, but where to donate is centrally determined
+- A portion of the profits are used to contribute to society, but there is a centralized decision on where to donate the money
+- Many amounts lack sales promotion
 
-# Solutions/features that address the challenges
+# Solutions/features that solve problems
 ## Transparent winner determination
-Random numbers are generated on the blockchain, allowing for transparent winner determination
+Random numbers are generated on the blockchain, so winners can be determined transparently
 
-## High distribution ratio
+## High distribution rate
 By making it a DAO, the budget is easier to collect, and because it is done on the blockchain, there is less budget for server costs, etc. Affiliate functionality provides an incentive for referrals, keeping marketing costs low.
 
-## Affiliate
-5% of the funds locked into the TRST smart contract as an affiliate commission. If not through an affiliate, the funds are paid to TRST management.
+! [](docs/img/sharing_ratio.png)
+
+## Affiliates
+5% of funds locked into TRST's smart contract as an affiliate commission, payable If not through an affiliate, the funds are paid to TRST management.
 Therefore, TRST participants pay the same cost whether they join through an affiliate or directly from the TRST management website.
 
 ## DAO-ization
@@ -54,9 +57,12 @@ No user will know the address of the participant, the participant's midpoint, or
 
 This type of mechanism can be used to ensure randomness.
 
+## Winning amount simulation
+
+! [](docs/img/money_won.png)
+
 # Concerns.
-Define the rate of distribution to users and the rate of distribution to investors
-It is necessary to consider whether it is better to separate the governor tokens and the ERC20 tokens used for TRST.
-Need to consider which country to base this service in and do it in, as Japanese law definitely does not allow this service to operate
+It is necessary to consider whether it is better to separate the governor's tokens from the ERC20 tokens used for TRST.
+Need to consider which country to base it in to do this, as this service definitely cannot be operated under Japanese law
 
 Translated with www.DeepL.com/Translator (free version)
