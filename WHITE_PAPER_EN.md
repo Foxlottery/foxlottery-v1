@@ -28,8 +28,6 @@ By making it a DAO, the budget is easier to collect, and because it is done on t
 Therefore, TRST participants pay the same cost whether they join through an affiliate or directly from the TRST management website.
 
 ## DAO-ization
-80% distributed to users
-20% is distributed within the DAO organization
 Governance token holders get to decide where to donate, set policy, and get a portion of the proceeds.
 Owner organization handles marketing activities and development
 
