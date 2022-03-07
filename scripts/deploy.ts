@@ -14,18 +14,19 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const Greeter = await ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
-
-  await greeter.deployed();
-
-  console.log("Greeter deployed to:", greeter.address);
 
   const LotteryToken = await ethers.getContractFactory("LotteryToken");
+  const WeeklyLottery = await ethers.getContractFactory("TRST");
   const lotteryToken = await LotteryToken.deploy();
+  await WeeklyLottery.deploy(
+    "WeeklyLottery",
+    "WLT",
+    86400 * 7,
+    lotteryToken.address
+  );
   const signers = await ethers.getSigners();
   const owner = signers[0];
-  lotteryToken.mint(owner.address, "100");
+  lotteryToken.mint(owner.address, "100000000");
 }
 
 // We recommend this pattern to be able to use async/await everywhere

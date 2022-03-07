@@ -150,9 +150,7 @@ contract TRST is Ownable {
     }
 
     function getRand() public view returns (uint) {
-        return getNumber(getNumber(participants.length) +
-                         getNumber(block.timestamp) +
-                         getNumberFromAddress(participants[participants.length / 2]));
+        return getNumber(getNumber(participants.length) + getNumber(block.timestamp) + getNumberFromAddress(participants[participants.length / 2]));
     }
 
     function getNumber(uint number) public view returns (uint) {
