@@ -1,17 +1,20 @@
-# TRST
+# CryptoLottery
 
 # Overview
-TRST stands for Timed Random Send Token, which translates directly to Timed Random Send Token, which is a random token collected from users at a specific time according to a time cycle and distribution ratio determined by the smart contract owner. The distribution can be made to the winners.
+CryptoLottery is a decentralized lottery using crypto assets.
+ERC20 tokens collected from users are distributed to random winners.
+Users can choose where to donate when sending money to the lottery, and a portion of the lottery proceeds are used for non-profit activities as determined by a vote.
 
-TRST Dao will give 75% back to users, 5% to affiliate users, and the remaining 15% to revenue and 5% to non-profit expenses.
+While regular lotteries offer a return rate of about 50%, the
+CryptoLottery will return 75% to users, 5% to affiliate users, the remaining 15% to revenue, and 5% to non-profit expenses.
 
 # Marketing Strategy
-Allow people who retweet TRST DAO event tweets and follow TRST DAO accounts to participate in TRST without having to buy TRST DAO tokens in order to attend the event.
+Give away free lottery tickets to users who retweet or follow you on Twitter without having to buy a CryptoLottery lottery ticket.
 
 # Centralized Lottery Challenges
 - Lack of transparency
 - Low distribution rate
-- A portion of the profits are used to contribute to society, but there is a centralized decision on where to donate the money
+- A portion of profits are used to contribute to society, but there is a centralized decision on where to donate
 - Large amount of money spent on sales promotion
 
 # Solutions and functions that solve problems
@@ -24,20 +27,20 @@ By making it a DAO, the budget is easier to collect, and because it is done on t
 ! [](docs/img/sharing_ratio.png)
 
 ## Affiliates
-5% of funds locked into TRST's smart contract as an affiliate commission, payable If not through an affiliate, the funds are paid to TRST management.
-So the cost paid by TRST participants will be the same whether they participate through an affiliate or directly from the TRST management website.
+5% of the amount of lottery tickets purchased is paid to the affiliate as an affiliate commission. If not through an affiliate, the funds are paid to the CryptoLottery management.
+Therefore, the lottery participant pays the same amount of money whether he/she participates via an affiliate or directly from the CryptoLottery management's website.
 
 ## DAO-ization
-Governance token holders can decide where to donate, set policy, and get a portion of the proceeds.
+Governance token holders can decide where to donate, set policies, and receive a portion of the proceeds.
 The owner organization handles marketing activities and development.
 
 ## Usage
-You can buy TRST Dao tokens on exchanges or DeFi and
-There are daily, weekly, monthly, and yearly TRST smart contracts, so you can lock your funds into whatever you want.
-Once you lock in your funds, you can see how likely you are to win, if at all.
+You can purchase CryptoLottery tokens on exchanges or DeFi and
+There are daily, weekly, monthly, and yearly CryptoLottery smart contracts, so you can deposit funds into the one you want.
+Once you have deposited your funds, you can check to see how likely you are to win, if at all.
 
 ## Which blockchain networks can I use it on?
-Since it is developed in Solidity, it can be released on Ethereum, Binance, Polygon, Astar Network, Avalanche, etc.
+Since it is developed in Solidity, it can be used with Ethereum, Binance, Polygon, Astar Network, Avalanche, etc.
 
 ## Technical Specifications
 Solidity
@@ -61,5 +64,6 @@ This type of mechanism can be used to ensure randomness.
 
 # Concerns
 Japanese law definitely does not allow this service to operate, so it is necessary to consider which country to base it in.
+
 
 Translated with www.DeepL.com/Translator (free version)

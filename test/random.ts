@@ -1,21 +1,22 @@
-import { expect } from "chai";
 import { ethers } from "hardhat";
 
 describe("random", function () {
   before(async function () {
-    this.LotteryToken = await ethers.getContractFactory("LotteryToken");
-    this.WeeklyLottery = await ethers.getContractFactory("TRST");
+    this.CryptoLottery = await ethers.getContractFactory("CryptoLottery");
+    this.WeeklyCryptoLottery = await ethers.getContractFactory(
+      "TimedRandomSendContract"
+    );
     this.signers = await ethers.getSigners();
     console.log(this.signers.length);
   });
 
   beforeEach(async function () {
-    this.lotteryToken = await this.LotteryToken.deploy();
-    this.weeklyLottery = await this.WeeklyLottery.deploy(
-      "WeeklyLottery",
+    this.cryptoLottery = await this.CryptoLottery.deploy();
+    this.weeklyCryptoLottery = await this.WeeklyCryptoLottery.deploy(
+      "WeeklyCryptoLottery",
       "WLT",
       120,
-      this.lotteryToken.address
+      this.cryptoLottery.address
     );
 
     // set rule
@@ -25,7 +26,7 @@ describe("random", function () {
       { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
     ];
     randomSendingRules.forEach(async (rule) => {
-      await this.weeklyLottery.setRandomSendingRule(
+      await this.weeklyCryptoLottery.setRandomSendingRule(
         rule.raito,
         rule.sendingCount
       );
@@ -33,11 +34,11 @@ describe("random", function () {
 
     // buy weekly token
     this.signers.forEach((user: any) => {
-      this.lotteryToken.mint(user.address, "100");
-      this.lotteryToken
+      this.cryptoLottery.mint(user.address, "100");
+      this.cryptoLottery
         .connect(user)
-        .approve(this.weeklyLottery.address, "100");
-      this.weeklyLottery.connect(user).buy("100");
+        .approve(this.weeklyCryptoLottery.address, "100");
+      this.weeklyCryptoLottery.connect(user).buy("100");
     });
 
     this._sleep = (ms: number) =>
@@ -46,6 +47,6 @@ describe("random", function () {
 
   it("randSend", async function () {
     await this._sleep(10000); // 10 seconds later
-    this.weeklyLottery.randSend();
+    this.weeklyCryptoLottery.randSend();
   });
 });

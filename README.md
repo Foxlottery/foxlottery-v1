@@ -1,20 +1,28 @@
 # Overview
 ### English
-TRST stands for Timed Random Send Token, which translates directly to Timed Random Send Token, which is a random token collected from users at a specific time according to a time cycle and distribution ratio determined by the smart contract owner. The distribution can be made to the winners.
+CryptoLottery is a decentralized lottery using crypto assets.
+ERC20 tokens collected from users are distributed to random winners.
+When users send money to the lottery, they can choose where to donate it, and a portion of the lottery proceeds are used for non-profit activities as determined by a vote.
 
-TRST Dao will give 75% back to users, 5% to affiliate users, and the remaining 15% to revenue and 5% to non-profit expenses.
+While regular lotteries offer a return rate of about 50%, the
+CryptoLottery will return 75% to users, 5% to affiliate users and the remaining 15% to revenue and 5% to non-profit expenses.
+
+Translated with www.DeepL.com/Translator (free version)
 
 ### 日本語
-TRSTはTimed Random Send Tokenの略称で、直訳すると時限ランダム送信トークンという意味です。TRSTは、スマートコントラクトのオーナーが決めた、時間周期と分配率により、特定の時間になった時に、ユーザーから収集したERC20トークンをランダムな当選者に分配することができます。
+CryptoLotteryは暗号資産を使用した分散型宝くじです。
+ユーザーから収集したERC20トークンをランダムな当選者に分配します。
+ユーザーは宝くじに送金する時に、寄付先を選択でき、宝くじの収益の一部を投票によって決めた非営利活動に使います。
 
-TRST Daoでは、ユーザーへの還元率を75%にして、アフィリエイトユーザーに5％、残り15%を収益、非営利活動費を5%にします。
+通常の宝くじでは、還元率が50%ほどですが、
+CryptoLotteryでは、ユーザーへの還元率を75%にして、アフィリエイトユーザーに5％、残り15%を収益、非営利活動費を5%にします。
 
 # Setup
 ```
 yarn install
 npx hardhat node
 npx hardhat test
-
+npx hardhat run --network localhost scripts/deploy.ts
 ```
 
 

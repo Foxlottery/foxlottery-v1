@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 // WARNING: There is a known vuln contained within this contract related to vote delegation, 
 // it's NOT recommmended to use this in production.  
 
-contract LotteryToken is ERC20("LotteryToken", "LTT"), Ownable {
+contract CryptoLottery is ERC20("CryptoLottery", "CLT"), Ownable {
     function mint(address _to, uint256 _amount) public onlyOwner {
         _mint(_to, _amount);
     }

@@ -4,8 +4,8 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-// Timed Random Send Token
-contract TRST is Ownable {
+// Timed Random Send Contract
+contract TimedRandomSendContract is Ownable {
     struct RandomSendingRule {
         uint ratio;
         uint sendingCount;
@@ -39,7 +39,7 @@ contract TRST is Ownable {
     }
 
     function buy(uint256 _amount) public {
-        require(erc20.balanceOf(msg.sender) >= _amount, "TRST: Not enough erc20 tokens.");
+        require(erc20.balanceOf(msg.sender) >= _amount, "TimedRandomSendContract: Not enough erc20 tokens.");
         _mint(msg.sender, _amount);
         participants.push(msg.sender);
         // Lock the Lottery in the contract
@@ -48,7 +48,7 @@ contract TRST is Ownable {
     
     // 抽選の確定をするか確認
     function randSend() public {
-        require(closeTimestamp <= block.timestamp, "TRST: The time has not yet reached the closing time.");
+        require(closeTimestamp <= block.timestamp, "TimedRandomSendContract: The time has not yet reached the closing time.");
         uint totalCount = totalSupply();
         uint rand = getRand();
         for (uint index = 0; index < randomSendingRules.length; index++) {
@@ -113,7 +113,7 @@ contract TRST is Ownable {
         uint totalAmount = currentRandomSendingTotal() + (10 ** 18 / _ratio) * _sendingCount;
         require(
             totalAmount < 10 ** 18, 
-            "TRST: Only less than 100%"
+            "TimedRandomSendContract: Only less than 100%"
         );
         _;
     }
@@ -122,7 +122,7 @@ contract TRST is Ownable {
         uint totalAmount = currentRandomSendingTotal() + (10 ** 18 / _ratio);
         require(
             totalAmount < 10 ** 18, 
-            "TRST: Only less than 100%"
+            "TimedRandomSendContract: Only less than 100%"
         );
         _;
     }
@@ -131,7 +131,7 @@ contract TRST is Ownable {
         uint elapsedTime = closeTimestamp - block.timestamp;
         require(
             block.timestamp < ((closeTimestamp - cycle) + (elapsedTime / 10)),
-            "TRST: Rule changes can be made up to one-tenth of the end time."
+            "TimedRandomSendContract: Rule changes can be made up to one-tenth of the end time."
         );
         _;
     }

@@ -15,18 +15,20 @@ async function main() {
 
   // We get the contract to deploy
 
-  const LotteryToken = await ethers.getContractFactory("LotteryToken");
-  const WeeklyLottery = await ethers.getContractFactory("TRST");
-  const lotteryToken = await LotteryToken.deploy();
-  await WeeklyLottery.deploy(
-    "WeeklyLottery",
+  const CryptoLottery = await ethers.getContractFactory("CryptoLottery");
+  const WeeklyCryptoLottery = await ethers.getContractFactory(
+    "TimedRandomSendContract"
+  );
+  const cryptoLottery = await CryptoLottery.deploy();
+  await WeeklyCryptoLottery.deploy(
+    "WeeklyCryptoLottery",
     "WLT",
     86400 * 7,
-    lotteryToken.address
+    cryptoLottery.address
   );
-  const signers = await ethers.getSigners();
-  const owner = signers[0];
-  lotteryToken.mint(owner.address, "100000000");
+  if (process.env.MAIN_ACCOUNT_ADDRESS) {
+    cryptoLottery.mint(process.env.MAIN_ACCOUNT_ADDRESS, "100000000");
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
