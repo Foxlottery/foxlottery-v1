@@ -18,11 +18,30 @@ CryptoLotteryは暗号資産を使用した分散型宝くじです。
 CryptoLotteryでは、ユーザーへの還元率を75%にして、アフィリエイトユーザーに5％、残り15%を収益、非営利活動費を5%にします。
 
 # Setup
+
+## module install
 ```
 yarn install
+```
+
+## start local node
+```
 npx hardhat node
+```
+
+## test
+```
 npx hardhat test
+```
+
+## local net deploy
+```
 npx hardhat run --network localhost scripts/deploy.ts
+```
+
+## test net deploy
+```
+npx hardhat run --network ropsten scripts/deploy.ts
 ```
 
 

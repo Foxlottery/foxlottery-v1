@@ -38,7 +38,7 @@ contract TimedRandomSendContract is Ownable {
         erc20 = _erc20;
     }
 
-    function buy(uint256 _amount) public {
+    function buy(uint256 _amount) public payable {
         require(erc20.balanceOf(msg.sender) >= _amount, "TimedRandomSendContract: Not enough erc20 tokens.");
         _mint(msg.sender, _amount);
         participants.push(msg.sender);
