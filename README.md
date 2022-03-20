@@ -46,6 +46,6 @@ npx hardhat run --network ropsten scripts/deploy.ts
 
 
 # White Paper
-[White Paper](./WHITE_PAPER_EN.md)
+[White Paper](https://cryptolottery.gitbook.io/cryptolottery-whitepaper/whitepaper/english)
 
-[ホワイトペーパー](./WHITE_PAPER_JA.md)
+[ホワイトペーパー](https://cryptolottery.gitbook.io/cryptolottery-whitepaper/whitepaper/japanese)
