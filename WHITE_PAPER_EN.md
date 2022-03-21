@@ -17,7 +17,7 @@ Lottery proceeds will be used for the following
 - Building an ecosystem
 - Dividends to staking wallets
 
-CryptoLottery's organization will work towards becoming a fully DAO (self-sustaining decentralized organization).
+The CryptoLottery organization will work towards becoming a fully DAO (self-sustaining decentralized organization).
 
 # Vision
 Decentralized lotteries improve society
@@ -64,7 +64,7 @@ This is an example of a Japanese lottery.
 ## Reduce promotional costs with affiliates
 Affiliates can refer users to CrytoLottery and receive a sales commission when users buy lottery tickets.
 
-Affiliates need to stake a certain amount of CryptoLottery's ERC20 tokens to participate.
+Affiliates need to staking CryptoLottery's ERC20 tokens above a certain amount to participate.
 5% of the amount of lottery tickets purchased is paid to the affiliate as an affiliate commission. If not through an affiliate, the funds are paid to the CryptoLottery management.
 Therefore, lottery participants pay the same amount of money whether they participate through an affiliate or directly from the CryptoLottery management website.
 
@@ -77,15 +77,15 @@ For each goal, select an organization that is active in that area.
 After the lottery is over, a portion of the proceeds will be immediately remitted to the organization determined by the vote.
 This speedy approach to philanthropy makes society more peaceful and prosperous.
 
-Charitable organizations can apply to CryptoLottery to put their profile and wallet address on the donation list.
+Charitable organizations can apply to CryptoLottery to have their profile and wallet address placed on the donation list.
 
 ## DAO-ized
 Governance token holders set the policy for the application.
 The owner organization handles marketing activities and development.
 Staking will receive a portion of the proceeds.
 
-## If you win, the money is automatically transferred to your wallet.
-In the case of Japanese lotteries, a high ticket winner must bring his/her ID to the bank on a weekday at noon.
+## When you win, the money is automatically transferred to your wallet.
+Japanese lottery tickets require a person to bring identification to a bank on a weekday at noon for a large lottery win.
 With blockchain, the money is automatically transferred to your wallet when you win and can be used on the same day.
 
 Some foreign lotteries are forfeited if you do not pick up your lottery ticket within 7 days of the winning date.
@@ -95,18 +95,20 @@ By having the money sent automatically, you will not forget to get it.
 We're going to turn this ecosystem around.
 Social Action, DeFi, Lottery, Contribution to the Blockchain Network
 
-## Operate with DeFi using funds spent on lottery
-If there is a weekly lottery, set the odds of winning slightly higher if deposited in the lottery on the first day of the week. Allow more funds to be collected on the first day of the week.
+## Operate with DeFi using funds applied by the lottery
+Set up a weekly lottery, with a slightly higher chance of winning if deposited in the lottery on the first day of the week. Allow more funds to be collected on the first day of the week.
 The collected ERC20 tokens will be invested in uniswap or other means to generate income.
 
 # How to use the lottery participants
 You can purchase CryptoLottery tokens on exchanges or DeFi and
-There are daily, weekly, monthly, and yearly CryptoLottery smart contracts, so you can deposit funds into the one you want.
-Once you have deposited your funds, you can check to see how likely you are to win.
-When the day of the winners...
+There are daily, weekly, monthly, and annual lottery smart contracts, so you can deposit funds into whichever one you like.
+You vote on how you want to spend your social contribution funds.
+Once you have deposited your funds, you will be shown how likely you are to win.
+On the day of the winner, a winner will be chosen at random and the money will be automatically transferred to the winner.
+The money will be sent to the organization that will spend the social contribution activity funds as determined by the voting.
 
 # Marketing Strategy
-Even if you don't buy a CryptoLottery lottery ticket, we will give away free lottery tickets to users who retweet and follow us on Twitter.
+Free lottery tickets will be given out to users who retweet and follow CryptoLottery on Twitter without having to buy a CryptoLottery lottery ticket.
 
 # Winning amount simulation
 
@@ -122,8 +124,8 @@ Even if you don't buy a CryptoLottery lottery ticket, we will give away free lot
 
 2022Q3 ICO
 
-Total amount issued Not yet determined
-Supply Not yet determined
+Total amount issued: To be determined
+Supply: not yet determined
 
 # SDGs
 A global, decentralized, trustless lottery to achieve the SDGs (Sustainable Development Goals).
@@ -170,17 +172,18 @@ Quote from: http://www.dubaicityguide.com/m/features/index.asp?id=8876#.YjatFJPP
 - Curaçao Island
 
 ### The most promising is Malta
-Lotteries are not regulated and they also issue licenses for online casinos.
+Lotteries are not regulated and issue licenses for online casinos.
+You can start a lottery business without an online casino license, but a license gives you more credibility.
 Cited from: https://thelawreviews.co.uk/title/the-gambling-law-review/malta
 
 
-ICOs with virtual currency are possible with application.
+ICO with virtual currency is possible if you apply for it.
 Quote from: https://www.csbgroup.com/fintech/initial-coin-offering-ico-malta/
 
 # Members
 
 Seiya Takahashi
-24 years old, is a representative of Outsource Systems, Inc. He has experience in system development for various companies.
+24, is a representative of Outsource Systems, Inc. He has experience in system development for various companies.
 He develops web services using modern development tools (Rails, React, AWS).
 He became interested in Bitcoin in 2016, learned the concept of blockchain, and started working with Solidity in 2020.
 
@@ -199,10 +202,10 @@ Smart contract development in Solidity
 Front-end development with React
 
 CMO
-Marketing,PR
+Marketing, PR
 
 CCO
-Community management such as discord
+Community management such as DISCORD
 
 Welcome Requirements
 All in both English and Japanese or English only
@@ -233,11 +236,10 @@ https://PoolTogether.com/
 
 
 ## About Lottery Smart Contracts
-The lottery is conducted using an ERC20 token called CryptoLottery.
+The CryptoLottery, an ERC20 token, is used to play the lottery.
 
-The smart contract to run the lottery is based on `TimedRandomSendContract`.
+The smart contract for playing the lottery is based on `TimedRandomSendContract`.
 https://github.com/PeterTakahashi/CryptoLottery/blob/main/contracts/TimedRandomSendContract.sol
-
 
 ```js
 name // name of the lottery (e.g., WeeklyLottery)
@@ -253,6 +255,6 @@ erc20 // ERC20 token used in the lottery
 randomSendingRules // how many people have what percentage chance of winning
 
 // How much money to send to which address at the time of the lottery's closing date
-// Mainly the address of the management headquarters, etc.
-DeFinitelySendingRules 
+// Mainly put in the address of the operating headquarters, etc.
+DeFinitelySendingRules
 ````

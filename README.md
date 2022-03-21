@@ -10,7 +10,7 @@ CryptoLottery will return 75% to users, 5% to affiliate users and the remaining 
 Translated with www.DeepL.com/Translator (free version)
 
 ### 日本語
-CryptoLotteryは暗号資産を使用した分散型宝くじです。
+CryptoLotteryは暗号資産とスマートコントラクト使用した分散型宝くじです。
 ユーザーから収集したERC20トークンをランダムな当選者に分配します。
 ユーザーは宝くじに送金する時に、寄付先を選択でき、宝くじの収益の一部を投票によって決めた非営利活動に使います。
 
