@@ -40,13 +40,9 @@ describe("random", function () {
         .approve(this.weeklyCryptoLottery.address, "100");
       this.weeklyCryptoLottery.connect(user).buy("100");
     });
-
-    this._sleep = (ms: number) =>
-      new Promise((resolve) => setTimeout(resolve, ms));
   });
 
   it("randSend", async function () {
-    await this._sleep(10000); // 10 seconds later
     this.weeklyCryptoLottery.randSend();
   });
 });

@@ -4,8 +4,10 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
+
 // Timed Random Send Contract
-contract TimedRandomSendContract is Ownable {
+contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     struct RandomSendingRule {
         uint ratio;
         uint sendingCount;
@@ -14,28 +16,47 @@ contract TimedRandomSendContract is Ownable {
         uint ratio;
         address destinationAddress;
     }
-    struct SendTo {
-        uint amount;
-        address destinationAddress;
-    }
     string public name;
     string public symbol;
     uint public cycle;
     uint public closeTimestamp;
+    uint public eventCounts = 0;
     address[] public participants;
     IERC20 public erc20;
     RandomSendingRule[] public randomSendingRules;
     DefinitelySendingRule[] public definitelySendingRules;
     mapping(address => uint256) private _balances;
 
+    // VRF Variables
+    bytes32 public keyHash;
+    uint256 public fee = 100000000000000000;
+    uint256 public randomResult;
+
+    // Maps
+    mapping(uint256 => uint256) public randomMap; // maps a eventCounts to a random number
+    mapping(bytes32 => uint256) public requestMap; // maps a requestId to a eventCounts
+    
+
     // Define the Lottery token contract
-    constructor(string memory _name, string memory _symbol, uint _cycle, IERC20 _erc20) {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint _cycle,
+        IERC20 _erc20,
+        address _link,
+        address _coordinator, 
+        bytes32 _keyhash)
+    VRFConsumerBase(_coordinator, _link)
+    {
         require(_cycle >= 10);
         name = _name;
         symbol = _symbol;
         cycle = _cycle;
         closeTimestamp = block.timestamp + _cycle;
         erc20 = _erc20;
+        
+        // Chainlink setters
+        keyHash = _keyhash;
     }
 
     function buy(uint256 _amount) public payable {
@@ -52,7 +73,7 @@ contract TimedRandomSendContract is Ownable {
         uint totalCount = totalSupply();
         uint rand = getRand();
         for (uint index = 0; index < randomSendingRules.length; index++) {
-            sendingDestinationDetermination(randomSendingRules[index], totalCount, rand);
+            _sendingDestinationDetermination(randomSendingRules[index], totalCount, rand);
         }
         for (uint index = 0; index < definitelySendingRules.length; index++) {
             DefinitelySendingRule memory definitelySendingRule = definitelySendingRules[index];
@@ -63,16 +84,16 @@ contract TimedRandomSendContract is Ownable {
     }
 
     // 当選と配当
-    function sendingDestinationDetermination(RandomSendingRule memory randomSendingRule, uint totalCount, uint rand) private {
+    function _sendingDestinationDetermination(RandomSendingRule memory randomSendingRule, uint totalCount, uint rand) private {
         for (uint count = 0; count < randomSendingRule.sendingCount; count++) {
             uint randWithTotal = getRandWithCurrentTotal(rand);
-            address destinationAddress = getDestinationAddress(randWithTotal); // 抽選の確定
+            address destinationAddress = _getDestinationAddress(randWithTotal); // 抽選の確定
             uint dividendAmount = totalCount / randomSendingRule.ratio;
             erc20.transfer(destinationAddress, dividendAmount);
         }
     }
 
-    function getDestinationAddress(uint randWithTotal) private view returns(address) {
+    function _getDestinationAddress(uint randWithTotal) private view returns(address) {
         uint number = 0;
         address account;
         for (uint count = 0; count < participants.length; count++) {
@@ -146,11 +167,17 @@ contract TimedRandomSendContract is Ownable {
     }
 
     function getRandWithCurrentTotal(uint rand) public view returns (uint) {
-        return getNumber(getNumber(totalSupply()) + rand);
+        return getNumber(totalSupply() + rand);
     }
 
-    function getRand() public view returns (uint) {
-        return getNumber(getNumber(participants.length) + getNumber(block.timestamp) + getNumberFromAddress(participants[participants.length / 2]));
+    function getRand() public returns (uint rand) {
+        // production
+        // bytes32 requestId = getRandomNumber();
+        // requestMap[requestId] = eventCounts;
+        // return randomMap[eventCounts];
+
+        // dev
+        return getNumber(block.timestamp);
     }
 
     function getNumber(uint number) public view returns (uint) {
@@ -191,5 +218,27 @@ contract TimedRandomSendContract is Ownable {
      *
      * Note that `value` may be zero.
      */
-    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Transfer(address indexed from, address indexed to, uint value);
+
+
+     /** 
+     * Requests randomness 
+     */
+    function getRandomNumber() private returns (bytes32 requestId) {
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK - fill contract with faucet");
+        return requestRandomness(keyHash, fee);
+    }
+
+    /**
+     * Callback function used by VRF Coordinator
+     */
+    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
+        randomResult = randomness;
+        // constrain random number between 1-10
+        uint256 modRandom = randomResult;
+        // get eventCounts that created the request
+        uint256 thisEventCounts = requestMap[requestId];
+        // store random result in token image map
+        randomMap[thisEventCounts] = modRandom;
+    }
 }

@@ -1,6 +1,11 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
+const _link = "0x01BE23585060835E02B77ef475b0Cc51aA1e0709";
+const _coordinator = "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B";
+const _keyHash =
+  "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311";
+
 describe("WeeklyCryptoLottery", function () {
   before(async function () {
     this.CryptoLottery = await ethers.getContractFactory("CryptoLottery");
@@ -20,7 +25,10 @@ describe("WeeklyCryptoLottery", function () {
       "WeeklyCryptoLottery",
       "WLT",
       86400 * 7,
-      this.cryptoLottery.address
+      this.cryptoLottery.address,
+      _link,
+      _coordinator,
+      _keyHash
     );
 
     const randomSendingRules = [
@@ -110,7 +118,9 @@ describe("WeeklyCryptoLottery", function () {
       .approve(this.weeklyCryptoLottery.address, "100");
     await this.weeklyCryptoLottery.connect(this.bob).buy("100");
     const rand = await this.weeklyCryptoLottery.getRand();
-    console.log(await this.weeklyCryptoLottery.getRandWithCurrentTotal(rand));
+    console.log(
+      await this.weeklyCryptoLottery.getRandWithCurrentTotal(rand.value)
+    );
   });
 
   it("buy cryptoLotteryが足りないと、weeklyCryptoLottery購入ができないこと", async function () {
@@ -173,7 +183,10 @@ describe("WeeklyCryptoLottery", function () {
         "WeeklyCryptoLottery",
         "WLT",
         10,
-        this.cryptoLottery.address
+        this.cryptoLottery.address,
+        _link,
+        _coordinator,
+        _keyHash
       );
       this.signers.forEach((user: any) => {
         this.cryptoLottery.mint(user.address, "100");
@@ -202,7 +215,10 @@ describe("WeeklyCryptoLottery", function () {
         "WeeklyCryptoLottery",
         "WLT",
         86400 * 7,
-        this.cryptoLottery.address
+        this.cryptoLottery.address,
+        _link,
+        _coordinator,
+        _keyHash
       );
       this.signers.forEach((user: any) => {
         this.cryptoLottery.mint(user.address, "100");
