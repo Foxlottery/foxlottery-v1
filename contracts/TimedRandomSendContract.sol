@@ -6,7 +6,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 
-// Timed Random Send Contract
+
+/**
+ * @title TimedRandomSendContract
+ * @author Peter Takahashi(CEO of CryptoLottery)
+ * @notice This smart contract collects ERC20 tokens in a single wallet and
+           uses chainlink VRF to transfer the ERC20 tokens to the winners.
+ */
+
 contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     struct RandomSendingRule {
         uint id;
@@ -46,9 +53,17 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     // Maps
     mapping(uint256 => uint256) public randomMap; // maps a eventCounts to a random number
     mapping(bytes32 => uint256) public requestMap; // maps a requestId to a eventCounts
-    
 
-    // Define the Lottery token contract
+    /**
+    * @notice set initialize values
+    * @param _name contract name. For example is WeeklyLottery
+    * @param _symbol symbol is short name. For example is WLT 
+    * @param _cycle cycle of lottery by seconds.
+    * @param _erc20 ERC20 for lottery
+    * @param _link ChainLink address
+    * @param _coordinator ChainLink coordinator
+    * @param _keyhash ChainLink keyhash
+    */
     constructor(
         string memory _name,
         string memory _symbol,
@@ -70,46 +85,65 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
         keyHash = _keyhash;
     }
 
+    /**
+    * @notice buy lottery ticket
+    * @param _amount Amount of lottery tickets
+    * @dev When you buy a lottery ticket, you lock the funds in a smart contract wallet.
+    */
     function buy(uint256 _amount) public payable {
         require(erc20.balanceOf(msg.sender) >= _amount, "TimedRandomSendContract: Not enough erc20 tokens.");
+
         _mint(msg.sender, _amount);
         participants.push(msg.sender);
+
         // Lock the Lottery in the contract
         erc20.transferFrom(msg.sender, address(this), _amount);
     }
     
-    // 抽選の確定をするか確認
+    /**
+    * @notice random send ERC20 token to lottery participants
+    */
     function randSend() public {
+        // TODO: require there is randomMap[thisEventCounts] value
+
         require(closeTimestamp <= block.timestamp, "TimedRandomSendContract: The time has not yet reached the closing time.");
-        uint totalCount = totalSupply();
+        uint constantTotalSupply = totalSupply();
         uint rand = getRand();
 
+        // random send
         for (uint index = 0; index < randomSendingRuleIds.length; index++) {
             uint id = randomSendingRuleIds[index];
             if (id == 0) { continue; }
             uint ratio = randomSendingRuleRatio[id];
             uint sendingCount = randomSendingRuleSendingCount[id];
-            _sendingDestinationDetermination(sendingCount, ratio, totalCount, rand);
+            _sendingDestinationDetermination(sendingCount, ratio, constantTotalSupply, rand);
         }
 
+        // difinitely send
         for (uint definitelySendingRuleId = 1; definitelySendingRuleId < definitelySendingRuleIds.length; definitelySendingRuleId++) {
             address destinationAddress = definitelySendingRuleAddress[definitelySendingRuleId];
             if (destinationAddress == address(0)) { continue; }
             uint ratio = definitelySendingRuleRatio[definitelySendingRuleId];
 
-            erc20.transfer(destinationAddress, totalCount / ratio);
+            erc20.transfer(destinationAddress, constantTotalSupply / ratio);
         }
 
         closeTimestamp += cycle;
         delete participants; // reset participants
     }
 
-    // 当選と配当
-    function _sendingDestinationDetermination(uint _sendingCount, uint _ratio, uint totalCount, uint rand) private {
+    /**
+    * @notice Determination of winners and transfer of ERC20 tokens
+    * @param _sendingCount Number of times to send
+    * @param _ratio Ratio to be sent
+    * @param _constantTotalSupply Constant value of the amount collected
+    * @param _rand random number for using determination of winners
+    */
+    function _sendingDestinationDetermination(uint _sendingCount, uint _ratio, uint _constantTotalSupply, uint _rand) private {
         for (uint count = 0; count < _sendingCount; count++) {
-            uint randWithTotal = getRandWithCurrentTotal(rand);
+            uint randWithTotal = getRandWithCurrentTotal(_rand);
             address destinationAddress = _getDestinationAddress(randWithTotal); // 抽選の確定
-            uint dividendAmount = totalCount / _ratio;
+            uint dividendAmount = _constantTotalSupply / _ratio;
             erc20.transfer(destinationAddress, dividendAmount);
         }
     }
