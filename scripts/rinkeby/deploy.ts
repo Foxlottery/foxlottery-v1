@@ -35,17 +35,11 @@ async function main() {
     _keyHash
   );
 
-  // const randomSendingRules = [
-  //   { raito: 1 / 0.0001, sendingCount: 2000 }, // There's a 0.01% chance 2000 of us will win.
-  //   { raito: 1 / 0.005, sendingCount: 20 }, // There's a 0.5% chance 20 of us will win.
-  //   { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-  //   { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-  //   { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-  // ];
-  const ratio = 1 / 0.0001;
-  const sendingCount = 200;
-
-  await weeklyCryptoLottery.setRandomSendingRule(ratio, sendingCount);
+  await weeklyCryptoLottery.createRandomSendingRule(1 / 0.0001, 2000);
+  await weeklyCryptoLottery.createRandomSendingRule(1 / 0.005, 20);
+  await weeklyCryptoLottery.createRandomSendingRule(1 / 0.01, 5);
+  await weeklyCryptoLottery.createRandomSendingRule(1 / 0.05, 2);
+  await weeklyCryptoLottery.createRandomSendingRule(1 / 0.25, 1);
 
   if (process.env.MAIN_ACCOUNT_ADDRESS) {
     await cryptoLottery.mint(

@@ -9,12 +9,14 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 // Timed Random Send Contract
 contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     struct RandomSendingRule {
+        uint id;
         uint ratio;
         uint sendingCount;
     }
     struct DefinitelySendingRule {
+        uint id;
         uint ratio;
-        address destinationAddress;
+        address sendingAddress;
     }
     string public name;
     string public symbol;
@@ -23,13 +25,22 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     uint public eventCounts = 0;
     address[] public participants;
     IERC20 public erc20;
-    RandomSendingRule[] public randomSendingRules;
-    DefinitelySendingRule[] public definitelySendingRules;
     mapping(address => uint256) private _balances;
+
+    /// RandomSendingRule
+    uint[] public randomSendingRuleIds;
+    mapping(uint => uint) private randomSendingRuleRatio;
+    mapping(uint => uint) private randomSendingRuleSendingCount;
+
+    /// definitelySendingRule
+    uint[] public definitelySendingRuleIds;
+    mapping(uint => address) private definitelySendingRuleAddress;
+    mapping(uint => uint) private definitelySendingRuleRatio;
+    
 
     // VRF Variables
     bytes32 public keyHash;
-    uint256 public fee = 100000000000000000;
+    uint256 public fee = 10 ** 17; // 0.1zz
     uint256 public randomResult;
 
     // Maps
@@ -72,23 +83,33 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
         require(closeTimestamp <= block.timestamp, "TimedRandomSendContract: The time has not yet reached the closing time.");
         uint totalCount = totalSupply();
         uint rand = getRand();
-        for (uint index = 0; index < randomSendingRules.length; index++) {
-            _sendingDestinationDetermination(randomSendingRules[index], totalCount, rand);
+
+        for (uint index = 0; index < randomSendingRuleIds.length; index++) {
+            uint id = randomSendingRuleIds[index];
+            if (id == 0) { continue; }
+            uint ratio = randomSendingRuleRatio[id];
+            uint sendingCount = randomSendingRuleSendingCount[id];
+            _sendingDestinationDetermination(sendingCount, ratio, totalCount, rand);
         }
-        for (uint index = 0; index < definitelySendingRules.length; index++) {
-            DefinitelySendingRule memory definitelySendingRule = definitelySendingRules[index];
-            erc20.transfer(definitelySendingRule.destinationAddress, totalCount / definitelySendingRule.ratio);
+
+        for (uint definitelySendingRuleId = 1; definitelySendingRuleId < definitelySendingRuleIds.length; definitelySendingRuleId++) {
+            address destinationAddress = definitelySendingRuleAddress[definitelySendingRuleId];
+            if (destinationAddress == address(0)) { continue; }
+            uint ratio = definitelySendingRuleRatio[definitelySendingRuleId];
+
+            erc20.transfer(destinationAddress, totalCount / ratio);
         }
+
         closeTimestamp += cycle;
         delete participants; // reset participants
     }
 
     // 当選と配当
-    function _sendingDestinationDetermination(RandomSendingRule memory randomSendingRule, uint totalCount, uint rand) private {
-        for (uint count = 0; count < randomSendingRule.sendingCount; count++) {
+    function _sendingDestinationDetermination(uint _sendingCount, uint _ratio, uint totalCount, uint rand) private {
+        for (uint count = 0; count < _sendingCount; count++) {
             uint randWithTotal = getRandWithCurrentTotal(rand);
             address destinationAddress = _getDestinationAddress(randWithTotal); // 抽選の確定
-            uint dividendAmount = totalCount / randomSendingRule.ratio;
+            uint dividendAmount = totalCount / _ratio;
             erc20.transfer(destinationAddress, dividendAmount);
         }
     }
@@ -107,27 +128,58 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
         return account;
     }
 
-
-    function setRandomSendingRule(uint ratio, uint sendingCount) public onlyOwner canChangeRuleByTime canSetRandomSendingRules(ratio, sendingCount) {
-        randomSendingRules.push(RandomSendingRule(ratio, sendingCount));
+    function randomSendingRuleRatioById(uint _id) public view returns (uint) {
+        return randomSendingRuleRatio[_id];
     }
 
-    function deleteRandomSendintRule(uint index) public onlyOwner canChangeRuleByTime {
-        // Move the last element into the place to delete
-        randomSendingRules[index] = randomSendingRules[randomSendingRules.length - 1];
-        // Remove the last element
-        randomSendingRules.pop();
+    function randomSendingRuleSendingCountById(uint _id) public view returns (uint) {
+        return randomSendingRuleSendingCount[_id];
     }
 
-    function setDefinitelySendingRule(uint ratio, address destinationAddress) public onlyOwner canChangeRuleByTime canSetDefinitelySendingRules(ratio) {
-        definitelySendingRules.push(DefinitelySendingRule(ratio, destinationAddress));
+    function createRandomSendingRule(uint _ratio, uint _sendingCount) public onlyOwner canChangeRuleByTime canSetRandomSendingRules(_ratio, _sendingCount) {
+        uint id = randomSendingRuleIds.length + 1;
+        randomSendingRuleIds.push(id);
+        randomSendingRuleRatio[id] = _ratio;
+        randomSendingRuleSendingCount[id] = _sendingCount;
     }
 
-    function deleteDefinitelySendingRule(uint index) public onlyOwner canChangeRuleByTime {
-        // Move the last element into the place to delete
-        definitelySendingRules[index] = definitelySendingRules[definitelySendingRules.length - 1];
-        // Remove the last element
-        definitelySendingRules.pop();
+    function deleteRandomSendintRule(uint _id) public onlyOwner canChangeRuleByTime {
+        uint index = _id - 1;
+        require(randomSendingRuleIds[index] != 0, "deleteRandomSendintRule: randomSendingRuleId not found");
+        delete randomSendingRuleIds[index];
+        delete randomSendingRuleRatio[_id];
+        delete randomSendingRuleSendingCount[_id];
+    }
+
+    function definitelySendingRuleRatioById(uint _id) public view returns (uint) {
+        return definitelySendingRuleRatio[_id];
+    }
+
+    function definitelySendingRuleAddressById(uint _id) public view returns (address) {
+        return definitelySendingRuleAddress[_id];
+    }
+
+    function createDefinitelySendingRule(
+        uint _ratio,
+        address _destinationAddress
+    )
+    public onlyOwner canChangeRuleByTime canCreateDefinitelySendingRules(_ratio) {
+        uint id = definitelySendingRuleIds.length + 1;
+        definitelySendingRuleIds.push(id);
+        definitelySendingRuleAddress[id] = _destinationAddress;
+        definitelySendingRuleRatio[id] = _ratio;
+    }
+
+    function deleteDefinitelySendingRule(uint _id) public onlyOwner canChangeRuleByTime {
+        uint index = _id - 1;
+        require(definitelySendingRuleIds[index] != 0, "deleteDefinitelySendingRule: definitelySendingRuleId not found");
+        delete definitelySendingRuleIds[index];
+        delete definitelySendingRuleAddress[_id];
+        delete definitelySendingRuleRatio[_id];
+    }
+
+    function getDefinitelySendingRuleIds() public view returns (uint[] memory) {
+        return definitelySendingRuleIds;
     }
     
     modifier canSetRandomSendingRules(uint _ratio, uint _sendingCount) {
@@ -139,7 +191,7 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
         _;
     }
 
-    modifier canSetDefinitelySendingRules(uint _ratio) {
+    modifier canCreateDefinitelySendingRules(uint _ratio) {
         uint totalAmount = currentRandomSendingTotal() + (10 ** 18 / _ratio);
         require(
             totalAmount < 10 ** 18, 
@@ -159,9 +211,13 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
 
     function currentRandomSendingTotal() public view returns(uint) {
         uint totalAmount = 0;
-        for (uint i = 0; i < randomSendingRules.length; i++) {
-            RandomSendingRule memory randomSendingRule = randomSendingRules[i];
-            totalAmount += (10 ** 18 / randomSendingRule.ratio) * randomSendingRule.sendingCount;
+        for (uint i = 0; i < randomSendingRuleIds.length; i++) {
+            uint id = randomSendingRuleIds[i];
+            if (id == 0) { continue; }
+
+            uint ratio = randomSendingRuleRatio[id];
+            uint sendingCount = randomSendingRuleSendingCount[id];
+            totalAmount += (10 ** 18 / ratio) * sendingCount;
         }
         return totalAmount;
     }

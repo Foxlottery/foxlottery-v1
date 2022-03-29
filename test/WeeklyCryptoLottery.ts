@@ -32,14 +32,14 @@ describe("WeeklyCryptoLottery", function () {
     );
 
     const randomSendingRules = [
-      { raito: 1 / 0.0001, sendingCount: 2000 }, // There's a 0.01% chance 2000 of us will win.
-      { raito: 1 / 0.005, sendingCount: 20 }, // There's a 0.5% chance 20 of us will win.
-      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-      { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
+      { raito: 1 / 0.0001, sendingCount: 2000 }, // There's a 0.01% chance 2000 of us will win. 20%
+      { raito: 1 / 0.005, sendingCount: 20 }, // There's a 0.5% chance 20 of us will win. 10%
+      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win. 5%
+      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win. 10%
+      { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win. 25%
     ];
     randomSendingRules.forEach(async (rule) => {
-      await this.weeklyCryptoLottery.setRandomSendingRule(
+      await this.weeklyCryptoLottery.createRandomSendingRule(
         rule.raito,
         rule.sendingCount
       );
@@ -56,32 +56,33 @@ describe("WeeklyCryptoLottery", function () {
     expect(symbol, "WLT");
   });
 
-  it("setDefinitelySendingRule", async function () {
-    await this.weeklyCryptoLottery.setDefinitelySendingRule(
+  it("createDefinitelySendingRule", async function () {
+    await this.weeklyCryptoLottery.createDefinitelySendingRule(
       1 / 0.2,
       this.cryptoLottery.address
     );
-    const definitelySendingRule =
-      await this.weeklyCryptoLottery.definitelySendingRules(0);
-    expect(definitelySendingRule.ratio).to.equal(1 / 0.2);
-    expect(definitelySendingRule.destinationAddress).to.equal(
-      this.cryptoLottery.address
+    const ratio = await this.weeklyCryptoLottery.definitelySendingRuleRatioById(
+      1
     );
+    const address =
+      await this.weeklyCryptoLottery.definitelySendingRuleAddressById(1);
+    expect(ratio).to.equal(1 / 0.2);
+    expect(address).to.equal(this.cryptoLottery.address);
   });
 
   it("deleteDefinitelySendingRule", async function () {
-    await this.weeklyCryptoLottery.setDefinitelySendingRule(
+    await this.weeklyCryptoLottery.createDefinitelySendingRule(
       1 / 0.2,
       this.cryptoLottery.address
     );
-    await this.weeklyCryptoLottery.setDefinitelySendingRule(
-      1 / 0.02,
-      this.cryptoLottery.address
+    await this.weeklyCryptoLottery.deleteDefinitelySendingRule(1);
+    const ratio = await this.weeklyCryptoLottery.definitelySendingRuleRatioById(
+      1
     );
-    await this.weeklyCryptoLottery.deleteDefinitelySendingRule(0);
-    const definitelySendingRule =
-      await this.weeklyCryptoLottery.definitelySendingRules(0);
-    expect(definitelySendingRule.ratio).to.equal(1 / 0.02);
+    const address =
+      await this.weeklyCryptoLottery.definitelySendingRuleAddressById(1);
+    expect(ratio).to.equal(0);
+    expect(address).to.equal("0x0000000000000000000000000000000000000000");
   });
 
   it("lottryTokenを持っていること", async function () {
@@ -156,24 +157,44 @@ describe("WeeklyCryptoLottery", function () {
     expect(
       (await this.weeklyCryptoLottery.currentRandomSendingTotal()) / 10 ** 18
     ).to.equal(0.7);
-    await this.weeklyCryptoLottery.deleteRandomSendintRule(0);
+    await this.weeklyCryptoLottery.deleteRandomSendintRule(1);
     expect(
       (await this.weeklyCryptoLottery.currentRandomSendingTotal()) / 10 ** 18
     ).to.equal(0.5);
   });
 
-  it("deleteRandomSendintRule and setRandomSendingRule 再度RandomSendintRulesを設定できること", async function () {
+  it("deleteRandomSendintRule and createRandomSendingRule 再度RandomSendintRulesを設定できること", async function () {
     expect(
       (await this.weeklyCryptoLottery.currentRandomSendingTotal()) / 10 ** 18
     ).to.equal(0.7);
-    await this.weeklyCryptoLottery.deleteRandomSendintRule(0);
+    await this.weeklyCryptoLottery.deleteRandomSendintRule(1);
     expect(
       (await this.weeklyCryptoLottery.currentRandomSendingTotal()) / 10 ** 18
     ).to.equal(0.5);
-    await this.weeklyCryptoLottery.setRandomSendingRule(1 / 0.0001, 2000);
+    await this.weeklyCryptoLottery.createRandomSendingRule(1 / 0.0001, 2000);
     expect(
       (await this.weeklyCryptoLottery.currentRandomSendingTotal()) / 10 ** 18
     ).to.equal(0.7);
+  });
+
+  it("getDefinitelySendingRuleIds", async function () {
+    await this.weeklyCryptoLottery.createDefinitelySendingRule(
+      1 / 0.2,
+      this.cryptoLottery.address
+    );
+    await this.weeklyCryptoLottery.createDefinitelySendingRule(
+      1 / 0.2,
+      this.cryptoLottery.address
+    );
+    await this.weeklyCryptoLottery.createDefinitelySendingRule(
+      1 / 0.2,
+      this.cryptoLottery.address
+    );
+    const definitelySendingRuleIds =
+      await this.weeklyCryptoLottery.getDefinitelySendingRuleIds();
+    expect(definitelySendingRuleIds[0]).to.equal(1);
+    expect(definitelySendingRuleIds[1]).to.equal(2);
+    expect(definitelySendingRuleIds[2]).to.equal(3);
   });
 
   describe("canChangeRuleByTime: 時間が過ぎている場合、さらにrandomSendRuleを追加できないこと", function () {
@@ -200,7 +221,7 @@ describe("WeeklyCryptoLottery", function () {
     it("エラーが出ること", async function () {
       await setTimeout(async () => {
         await expect(
-          this.weeklyCryptoLottery.setRandomSendingRule(4, 1)
+          this.weeklyCryptoLottery.createRandomSendingRule(4, 1)
         ).to.be.revertedWith(
           "TimedRandomSendContract: Rule changes can be made up to one-tenth of the end time."
         );
@@ -208,7 +229,7 @@ describe("WeeklyCryptoLottery", function () {
     });
   });
 
-  describe("canSetDefinitelySendingRules: 100％を越してしまう場合", function () {
+  describe("canCreateDefinitelySendingRules: 100％を越してしまう場合", function () {
     beforeEach(async function () {
       this.cryptoLottery = await this.CryptoLottery.deploy();
       this.weeklyCryptoLottery = await this.WeeklyCryptoLottery.deploy(
@@ -236,7 +257,7 @@ describe("WeeklyCryptoLottery", function () {
         { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
       ];
       randomSendingRules.forEach(async (rule) => {
-        await this.weeklyCryptoLottery.setRandomSendingRule(
+        await this.weeklyCryptoLottery.createRandomSendingRule(
           rule.raito,
           rule.sendingCount
         );
@@ -245,7 +266,7 @@ describe("WeeklyCryptoLottery", function () {
 
     // it("エラーが出ること Only less than 100%", async function () {
     //   await expect(
-    //     this.weeklyCryptoLottery.setDefinitelySendingRule(
+    //     this.weeklyCryptoLottery.createDefinitelySendingRule(
     //       1 / 0.5,
     //       this.cryptoLottery.address
     //     )

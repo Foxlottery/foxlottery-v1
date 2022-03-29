@@ -36,7 +36,7 @@ npx hardhat test
 
 ## local net deploy
 ```
-npx hardhat run --network localhost scripts/deploy.ts
+npx hardhat run --network localhost scripts/hardhat/deploy.ts
 ```
 
 ## test net deploy

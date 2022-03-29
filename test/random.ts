@@ -26,7 +26,7 @@ describe("random", function () {
       { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
     ];
     randomSendingRules.forEach(async (rule) => {
-      await this.weeklyCryptoLottery.setRandomSendingRule(
+      await this.weeklyCryptoLottery.createRandomSendingRule(
         rule.raito,
         rule.sendingCount
       );
