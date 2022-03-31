@@ -3,6 +3,7 @@ pragma solidity ^0.8.10;
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 
@@ -15,42 +16,47 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
  */
 
 contract TimedRandomSendContract is VRFConsumerBase, Ownable {
+    using SafeMath for uint256;
+
+    string public name;
+    string public symbol;
+    uint public cycle;
+    uint public closeTimestamp;
+    uint public eventCounts = 1;
+    address[] public participants;
+    IERC20 public erc20; // erc20 token used for lottery
+    mapping(address => uint256) public balanceOf; // maps a wallet address to a wallet balance
+
+    uint immutable minimumBuyLotteryPrice = 10 ** 16; // 0.001
+    uint immutable baseTokenAmount = 10 ** 18;
+
+    /// RandomSendingRule
     struct RandomSendingRule {
         uint id;
         uint ratio;
         uint sendingCount;
     }
-    struct DefinitelySendingRule {
-        uint id;
-        uint ratio;
-        address sendingAddress;
-    }
-    string public name;
-    string public symbol;
-    uint public cycle;
-    uint public closeTimestamp;
-    uint public eventCounts = 0;
-    address[] public participants;
-    IERC20 public erc20;
-    mapping(address => uint256) private _balances;
-
-    /// RandomSendingRule
     uint[] public randomSendingRuleIds;
     mapping(uint => uint) private randomSendingRuleRatio;
     mapping(uint => uint) private randomSendingRuleSendingCount;
 
     /// definitelySendingRule
+    struct DefinitelySendingRule {
+        uint id;
+        uint ratio;
+        address sendingAddress;
+    }
     uint[] public definitelySendingRuleIds;
     mapping(uint => address) private definitelySendingRuleAddress;
     mapping(uint => uint) private definitelySendingRuleRatio;
     
 
-    // VRF Variables
+    // Chainlink VRF Variables
     bytes32 public keyHash;
-    uint256 public fee = 10 ** 17; // 0.1zz
+    uint256 public fee = 10 ** 17; // 0.1 link
     uint256 public randomResult;
 
-    // Maps
+    // Chainlink Value Maps
     mapping(uint256 => uint256) public randomMap; // maps a eventCounts to a random number
     mapping(bytes32 => uint256) public requestMap; // maps a requestId to a eventCounts
 
@@ -91,9 +97,13 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     * @dev When you buy a lottery ticket, you lock the funds in a smart contract wallet.
     */
     function buy(uint256 _amount) public payable {
+        require(minimumBuyLotteryPrice <= _amount, "TimedRandomSendContract: _amount must be set above the minimum price");
         require(erc20.balanceOf(msg.sender) >= _amount, "TimedRandomSendContract: Not enough erc20 tokens.");
 
-        _mint(msg.sender, _amount);
+        // Save how much you have purchased
+        balanceOf[msg.sender] += _amount;
+
+        // lottery purchaser add participants
         participants.push(msg.sender);
 
         // Lock the Lottery in the contract
@@ -102,13 +112,10 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     
     /**
     * @notice random send ERC20 token to lottery participants
+    * @dev require there is randomMap[thisEventCounts] value and after close time
     */
-    function randSend() public {
-        // TODO: require there is randomMap[thisEventCounts] value
-
-        require(closeTimestamp <= block.timestamp, "TimedRandomSendContract: The time has not yet reached the closing time.");
+    function randSend() public onlyAfterCloseTimestamp onlyHaveThisEventRandomNumber {
         uint constantTotalSupply = totalSupply();
-        uint rand = getRand();
 
         // random send
         for (uint index = 0; index < randomSendingRuleIds.length; index++) {
@@ -116,7 +123,7 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
             if (id == 0) { continue; }
             uint ratio = randomSendingRuleRatio[id];
             uint sendingCount = randomSendingRuleSendingCount[id];
-            _sendingDestinationDetermination(sendingCount, ratio, constantTotalSupply, rand);
+            _sendingDestinationDetermination(sendingCount, ratio, constantTotalSupply);
         }
 
         // difinitely send
@@ -125,9 +132,10 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
             if (destinationAddress == address(0)) { continue; }
             uint ratio = definitelySendingRuleRatio[definitelySendingRuleId];
 
-            erc20.transfer(destinationAddress, constantTotalSupply / ratio);
+            erc20.transfer(destinationAddress, constantTotalSupply.div(ratio));
         }
 
+        eventCounts += 1;
         closeTimestamp += cycle;
         delete participants; // reset participants
     }
@@ -137,46 +145,69 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     * @param _sendingCount Number of times to send
     * @param _ratio Ratio to be sent
     * @param _constantTotalSupply Constant value of the amount collected
-    * @param _rand random number for using determination of winners
     */
-    function _sendingDestinationDetermination(uint _sendingCount, uint _ratio, uint _constantTotalSupply, uint _rand) private {
+    function _sendingDestinationDetermination(uint _sendingCount, uint _ratio, uint _constantTotalSupply) private {
         for (uint count = 0; count < _sendingCount; count++) {
-            uint randWithTotal = getRandWithCurrentTotal(_rand);
-            address destinationAddress = _getDestinationAddress(randWithTotal); // 抽選の確定
-            uint dividendAmount = _constantTotalSupply / _ratio;
-            erc20.transfer(destinationAddress, dividendAmount);
+            uint randWithTotalSupply = getRandWithTotalSupply();
+            address winnerAddress = _getWinnerAddress(randWithTotalSupply);
+            uint dividendAmount = _constantTotalSupply.div(_ratio);
+
+            // send erc20 to winner
+            erc20.transfer(winnerAddress, dividendAmount);
         }
     }
 
-    function _getDestinationAddress(uint randWithTotal) private view returns(address) {
+    /**
+    * @notice get winner address
+    * @param _randWithTotalSupply random number
+    */
+    function _getWinnerAddress(uint _randWithTotalSupply) private view returns(address) {
         uint number = 0;
-        address account;
+        address winnerAddress;
         for (uint count = 0; count < participants.length; count++) {
-            if (number < randWithTotal && randWithTotal > number + balanceOf(participants[count])) {
-                account = participants[count];
+            // TODO: この辺の当選ロジックは修正する
+            if (number < _randWithTotalSupply && _randWithTotalSupply > number + balanceOf[participants[count]]) {
+                winnerAddress = participants[count];
                 break;
             }
-            number += balanceOf(participants[count]);
+            number += balanceOf[participants[count]];
         }
         // Return the winner's address.
-        return account;
+        return winnerAddress;
     }
 
+    /**
+    * @notice get random sending rule ratio by id
+    * @param _id random sending rule id
+    */
     function randomSendingRuleRatioById(uint _id) public view returns (uint) {
         return randomSendingRuleRatio[_id];
     }
 
+    /**
+    * @notice get random sending rule count by id
+    * @param _id random sending rule id
+    */
     function randomSendingRuleSendingCountById(uint _id) public view returns (uint) {
         return randomSendingRuleSendingCount[_id];
     }
 
-    function createRandomSendingRule(uint _ratio, uint _sendingCount) public onlyOwner canChangeRuleByTime canSetRandomSendingRules(_ratio, _sendingCount) {
+    /**
+    * @notice create random sending rule
+    * @param _ratio random sending rule ratio
+    * @param _sendingCount random sending rule sending count
+    */
+    function createRandomSendingRule(uint _ratio, uint _sendingCount) public onlyOwner canChangeRuleByTime canCreateRandomSendingRules(_ratio, _sendingCount) {
         uint id = randomSendingRuleIds.length + 1;
         randomSendingRuleIds.push(id);
         randomSendingRuleRatio[id] = _ratio;
         randomSendingRuleSendingCount[id] = _sendingCount;
     }
 
+    /**
+    * @notice delete random sending rule
+    * @param _id random sending rule id
+    */
     function deleteRandomSendintRule(uint _id) public onlyOwner canChangeRuleByTime {
         uint index = _id - 1;
         require(randomSendingRuleIds[index] != 0, "deleteRandomSendintRule: randomSendingRuleId not found");
@@ -185,25 +216,41 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
         delete randomSendingRuleSendingCount[_id];
     }
 
+    /**
+    * @notice get definitely sending rule ratio by id
+    * @param _id definitely sending rule id
+    */
     function definitelySendingRuleRatioById(uint _id) public view returns (uint) {
         return definitelySendingRuleRatio[_id];
     }
 
+    /**
+    * @notice get definitely sending rule address by id
+    * @param _id definitely sending rule id
+    */
     function definitelySendingRuleAddressById(uint _id) public view returns (address) {
         return definitelySendingRuleAddress[_id];
     }
 
+    /**
+    * @notice create definitely sending rule
+    * @param _ratio definitely sending rule ratio
+    * @param _destinationAddress destination address
+    */
     function createDefinitelySendingRule(
         uint _ratio,
         address _destinationAddress
-    )
-    public onlyOwner canChangeRuleByTime canCreateDefinitelySendingRules(_ratio) {
+    ) public onlyOwner canChangeRuleByTime canCreateDefinitelySendingRules(_ratio) {
         uint id = definitelySendingRuleIds.length + 1;
         definitelySendingRuleIds.push(id);
         definitelySendingRuleAddress[id] = _destinationAddress;
         definitelySendingRuleRatio[id] = _ratio;
     }
 
+    /**
+    * @notice delete definitely sending rule
+    * @param _id definitely sending rule id
+    */
     function deleteDefinitelySendingRule(uint _id) public onlyOwner canChangeRuleByTime {
         uint index = _id - 1;
         require(definitelySendingRuleIds[index] != 0, "deleteDefinitelySendingRule: definitelySendingRuleId not found");
@@ -212,38 +259,79 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
         delete definitelySendingRuleRatio[_id];
     }
 
+    /**
+    * @notice get definitely sending rule ids
+    */
     function getDefinitelySendingRuleIds() public view returns (uint[] memory) {
         return definitelySendingRuleIds;
     }
     
-    modifier canSetRandomSendingRules(uint _ratio, uint _sendingCount) {
-        uint totalAmount = currentRandomSendingTotal() + (10 ** 18 / _ratio) * _sendingCount;
+    /**
+    * @notice Can it create a CreateRandomSendingRules?
+    * @param _ratio RandomSendingRule ratio
+    * @param _sendingCount RandomSendingRule sending count
+    */
+    modifier canCreateRandomSendingRules(uint _ratio, uint _sendingCount) {
+        uint totalAmount = currentRandomSendingRatioTotal() + baseTokenAmount.div(_ratio) * _sendingCount;
         require(
-            totalAmount < 10 ** 18, 
+            totalAmount < baseTokenAmount, 
             "TimedRandomSendContract: Only less than 100%"
         );
         _;
     }
 
+    /**
+    * @notice Can it create a DefinitelySendingRule?
+    * @param _ratio Definitely Sending Rule ratio
+    */
     modifier canCreateDefinitelySendingRules(uint _ratio) {
-        uint totalAmount = currentRandomSendingTotal() + (10 ** 18 / _ratio);
+        uint totalAmount = currentRandomSendingRatioTotal() + baseTokenAmount.div(_ratio);
         require(
-            totalAmount < 10 ** 18, 
+            totalAmount < baseTokenAmount, 
             "TimedRandomSendContract: Only less than 100%"
         );
         _;
     }
 
+    /**
+    * @notice Is it possible time to change the lottery rules?
+    */
     modifier canChangeRuleByTime() {
         uint elapsedTime = closeTimestamp - block.timestamp;
         require(
-            block.timestamp < ((closeTimestamp - cycle) + (elapsedTime / 10)),
+            block.timestamp < ((closeTimestamp - cycle) + (elapsedTime.div(10))),
             "TimedRandomSendContract: Rule changes can be made up to one-tenth of the end time."
         );
         _;
     }
 
-    function currentRandomSendingTotal() public view returns(uint) {
+    modifier onlyAfterCloseTimestamp() {
+        require(closeTimestamp <= block.timestamp, "TimedRandomSendContract: The time has not yet reached the closing time.");
+        _;
+    }
+
+    /**
+    * @notice require have randomMap[thisEventCounts] value
+    */
+    modifier onlyHaveThisEventRandomNumber() {
+        require(thisEventRandomNumber() != 0, "TimedRandomSendContract: don't have this event random number");
+        _;
+    }
+
+    /**
+    * @notice require don't have randomMap[thisEventCounts] value
+    */
+    modifier onlyNotHaveThisEventRandomNumber() {
+        require(thisEventRandomNumber() == 0, "TimedRandomSendContract: have this event random number");
+        _;
+    }
+
+    /**
+    * @notice Current Ratio of Random Sending Rule
+    * @dev Need to get the current lottery return rate because if the lottery return rate exceeds 100%,
+           the lottery will no longer function.
+    */
+    function currentRandomSendingRatioTotal() public view returns(uint) {
         uint totalAmount = 0;
         for (uint i = 0; i < randomSendingRuleIds.length; i++) {
             uint id = randomSendingRuleIds[i];
@@ -251,70 +339,55 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
 
             uint ratio = randomSendingRuleRatio[id];
             uint sendingCount = randomSendingRuleSendingCount[id];
-            totalAmount += (10 ** 18 / ratio) * sendingCount;
+
+            totalAmount += (baseTokenAmount.div(ratio)) * sendingCount;
         }
         return totalAmount;
     }
 
-    function getRandWithCurrentTotal(uint rand) public view returns (uint) {
-        return getNumber(totalSupply() + rand);
-    }
-
-    function getRand() public returns (uint rand) {
+    function getRandomNumber() public onlyNotHaveThisEventRandomNumber onlyAfterCloseTimestamp returns (uint rand) {
         // production
-        // bytes32 requestId = getRandomNumber();
+        // bytes32 requestId = getRandomNumberFromChainLink();
         // requestMap[requestId] = eventCounts;
         // return randomMap[eventCounts];
 
         // dev
+        randomMap[eventCounts] = getNumber(block.timestamp);
         return getNumber(block.timestamp);
     }
 
-    function getNumber(uint number) public view returns (uint) {
-        return uint(keccak256(abi.encode(number))) % totalSupply();
+    /**
+    * @notice get number with totalSupply
+    */
+    function getRandWithTotalSupply() public view returns (uint) {
+        return getNumber(totalSupply() + thisEventRandomNumber());
     }
 
-    function getNumberFromAddress(address account) public pure returns (uint) {
-        return uint256(keccak256(abi.encodePacked(account)));
+    /**
+    * @notice get number
+    */
+    function getNumber(uint _number) public view returns (uint) {
+        return uint(keccak256(abi.encode(_number))) % totalSupply();
     }
 
+    /**
+    * @notice ERC20 tokens collected by lottery
+    */
     function totalSupply() public view returns(uint) {
         return erc20.balanceOf(address(this));
     }
 
-    function balanceOf(address account) public view virtual returns (uint256) {
-        return _balances[account];
-    }
-
-     /** @dev Creates `amount` tokens and assigns them to `account`, increasing
-     * the total supply.
-     *
-     * Emits a {Transfer} event with `from` set to the zero address.
-     *
-     * Requirements:
-     *
-     * - `account` cannot be the zero address.
-     */
-    function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "ERC20: mint to the zero address");
-
-        _balances[account] += amount;
-        emit Transfer(address(0), account, amount);
-    }
-
     /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
-     */
-    event Transfer(address indexed from, address indexed to, uint value);
-
+    * @notice get this event random number from randomMap
+    */
+    function thisEventRandomNumber() private view returns(uint) {
+        return randomMap[eventCounts];
+    }
 
      /** 
-     * Requests randomness 
+     * @notice Requests randomness from chainlink
      */
-    function getRandomNumber() private returns (bytes32 requestId) {
+    function getRandomNumberFromChainLink() private returns (bytes32 requestId) {
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK - fill contract with faucet");
         return requestRandomness(keyHash, fee);
     }
@@ -322,12 +395,12 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     /**
      * Callback function used by VRF Coordinator
      */
-    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
-        randomResult = randomness;
+    function fulfillRandomness(bytes32 _requestId, uint256 _randomness) internal override {
+        randomResult = _randomness;
         // constrain random number between 1-10
         uint256 modRandom = randomResult;
         // get eventCounts that created the request
-        uint256 thisEventCounts = requestMap[requestId];
+        uint256 thisEventCounts = requestMap[_requestId];
         // store random result in token image map
         randomMap[thisEventCounts] = modRandom;
     }

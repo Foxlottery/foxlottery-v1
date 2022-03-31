@@ -6,6 +6,9 @@ const _coordinator = "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B";
 const _keyHash =
   "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311";
 
+const erc20TokenAmountNumber = 10 ** 20;
+const erc20TokenAmount = String(erc20TokenAmountNumber);
+
 describe("WeeklyCryptoLottery", function () {
   before(async function () {
     this.CryptoLottery = await ethers.getContractFactory("CryptoLottery");
@@ -44,9 +47,9 @@ describe("WeeklyCryptoLottery", function () {
         rule.sendingCount
       );
     });
-    this.cryptoLottery.mint(this.owner.address, "100");
-    this.cryptoLottery.mint(this.bob.address, "100");
-    this.cryptoLottery.mint(this.carol.address, "100");
+    this.cryptoLottery.mint(this.owner.address, erc20TokenAmount);
+    this.cryptoLottery.mint(this.bob.address, erc20TokenAmount);
+    this.cryptoLottery.mint(this.carol.address, erc20TokenAmount);
   });
 
   it("should have correct name and symbol and decimal", async function () {
@@ -87,47 +90,52 @@ describe("WeeklyCryptoLottery", function () {
 
   it("lottryTokenを持っていること", async function () {
     expect(await this.cryptoLottery.balanceOf(this.owner.address)).to.equal(
-      "100"
+      erc20TokenAmount
     );
     expect(await this.cryptoLottery.balanceOf(this.bob.address)).to.equal(
-      "100"
+      erc20TokenAmount
     );
     expect(await this.cryptoLottery.balanceOf(this.carol.address)).to.equal(
-      "100"
+      erc20TokenAmount
     );
   });
 
   it("getNumber", async function () {
     await this.cryptoLottery
       .connect(this.bob)
-      .approve(this.weeklyCryptoLottery.address, "100");
-    await this.weeklyCryptoLottery.connect(this.bob).buy("100");
-    console.log(await this.weeklyCryptoLottery.getNumber(1));
-  });
+      .approve(this.weeklyCryptoLottery.address, erc20TokenAmount);
+    await this.weeklyCryptoLottery.connect(this.bob).buy(erc20TokenAmount);
 
-  it("getRand", async function () {
-    await this.cryptoLottery
-      .connect(this.bob)
-      .approve(this.weeklyCryptoLottery.address, "100");
-    await this.weeklyCryptoLottery.connect(this.bob).buy("100");
-    console.log(await this.weeklyCryptoLottery.getRand());
-  });
-
-  it("getRandWithCurrentTotal", async function () {
-    await this.cryptoLottery
-      .connect(this.bob)
-      .approve(this.weeklyCryptoLottery.address, "100");
-    await this.weeklyCryptoLottery.connect(this.bob).buy("100");
-    const rand = await this.weeklyCryptoLottery.getRand();
-    console.log(
-      await this.weeklyCryptoLottery.getRandWithCurrentTotal(rand.value)
-    );
+    const getNumber = await this.weeklyCryptoLottery.getNumber(1);
+    console.log(`gotNumber: ${getNumber}`);
   });
 
   it("buy cryptoLotteryが足りないと、weeklyCryptoLottery購入ができないこと", async function () {
+    await this.cryptoLottery
+      .connect(this.bob)
+      .approve(this.weeklyCryptoLottery.address, erc20TokenAmount);
+    await this.cryptoLottery
+      .connect(this.bob)
+      .transfer(this.owner.address, erc20TokenAmount);
     await expect(
-      this.weeklyCryptoLottery.connect(this.bob).buy("200")
-    ).to.be.revertedWith("");
+      this.weeklyCryptoLottery.connect(this.bob).buy(erc20TokenAmount)
+    ).to.be.revertedWith("TimedRandomSendContract: Not enough erc20 tokens.");
+    expect(await this.weeklyCryptoLottery.totalSupply()).to.equal("0");
+    expect(await this.weeklyCryptoLottery.balanceOf(this.bob.address)).to.equal(
+      "0"
+    );
+  });
+
+  it("buy cryptoLotteryが minimumBuyLotteryPrice以下だと、weeklyCryptoLottery購入ができないこと", async function () {
+    await this.cryptoLottery
+      .connect(this.bob)
+      .approve(this.weeklyCryptoLottery.address, erc20TokenAmount);
+    await expect(
+      this.weeklyCryptoLottery.connect(this.bob).buy("100")
+    ).to.be.revertedWith(
+      "TimedRandomSendContract: _amount must be set above the minimum price"
+    );
+
     expect(await this.weeklyCryptoLottery.totalSupply()).to.equal("0");
     expect(await this.weeklyCryptoLottery.balanceOf(this.bob.address)).to.equal(
       "0"
@@ -137,43 +145,62 @@ describe("WeeklyCryptoLottery", function () {
   it("buy cryptoLotteryがあると、weeklyCryptoLottery購入ができること、かつcryptoLotteryが減っていること、かつ参加者に追加されていること", async function () {
     await this.cryptoLottery
       .connect(this.bob)
-      .approve(this.weeklyCryptoLottery.address, "100");
-    await this.weeklyCryptoLottery.connect(this.bob).buy("100");
-    expect(await this.weeklyCryptoLottery.totalSupply()).to.equal("100");
+      .approve(this.weeklyCryptoLottery.address, erc20TokenAmount);
+    await this.weeklyCryptoLottery.connect(this.bob).buy(erc20TokenAmount);
+
+    await this.cryptoLottery
+      .connect(this.owner)
+      .approve(this.weeklyCryptoLottery.address, erc20TokenAmount);
+    await this.weeklyCryptoLottery.connect(this.owner).buy(erc20TokenAmount);
+
+    const totalSupply = await this.weeklyCryptoLottery.totalSupply();
+    expect(totalSupply).to.equal(String(erc20TokenAmountNumber * 2));
     expect(await this.weeklyCryptoLottery.balanceOf(this.bob.address)).to.equal(
-      "100"
+      erc20TokenAmount
     );
-    const participant = await this.weeklyCryptoLottery.participants(0);
-    expect(participant).to.equal(this.bob.address);
+    expect(
+      await this.weeklyCryptoLottery.balanceOf(this.owner.address)
+    ).to.equal(erc20TokenAmount);
+    const participantBob = await this.weeklyCryptoLottery.participants(0);
+    expect(participantBob).to.equal(this.bob.address);
+
+    const participantOwner = await this.weeklyCryptoLottery.participants(1);
+    expect(participantOwner).to.equal(this.owner.address);
   });
 
-  it("currentRandomSendingTotalが70%であること", async function () {
+  it("currentRandomSendingRatioTotalが70%であること", async function () {
     expect(
-      (await this.weeklyCryptoLottery.currentRandomSendingTotal()) / 10 ** 18
+      (await this.weeklyCryptoLottery.currentRandomSendingRatioTotal()) /
+        10 ** 18
     ).to.equal(0.7);
   });
 
   it("deleteRandomSendintRule RandomSendintRulesが削除できること", async function () {
     expect(
-      (await this.weeklyCryptoLottery.currentRandomSendingTotal()) / 10 ** 18
+      (await this.weeklyCryptoLottery.currentRandomSendingRatioTotal()) /
+        10 ** 18
     ).to.equal(0.7);
     await this.weeklyCryptoLottery.deleteRandomSendintRule(1);
     expect(
-      (await this.weeklyCryptoLottery.currentRandomSendingTotal()) / 10 ** 18
+      (await this.weeklyCryptoLottery.currentRandomSendingRatioTotal()) /
+        10 ** 18
     ).to.equal(0.5);
   });
 
   it("deleteRandomSendintRule and createRandomSendingRule 再度RandomSendintRulesを設定できること", async function () {
     expect(
-      (await this.weeklyCryptoLottery.currentRandomSendingTotal()) / 10 ** 18
+      (await this.weeklyCryptoLottery.currentRandomSendingRatioTotal()) /
+        10 ** 18
     ).to.equal(0.7);
     await this.weeklyCryptoLottery.deleteRandomSendintRule(1);
     expect(
-      (await this.weeklyCryptoLottery.currentRandomSendingTotal()) / 10 ** 18
+      (await this.weeklyCryptoLottery.currentRandomSendingRatioTotal()) /
+        10 ** 18
     ).to.equal(0.5);
     await this.weeklyCryptoLottery.createRandomSendingRule(1 / 0.0001, 2000);
     expect(
-      (await this.weeklyCryptoLottery.currentRandomSendingTotal()) / 10 ** 18
+      (await this.weeklyCryptoLottery.currentRandomSendingRatioTotal()) /
+        10 ** 18
     ).to.equal(0.7);
   });
 
@@ -210,11 +237,11 @@ describe("WeeklyCryptoLottery", function () {
         _keyHash
       );
       this.signers.forEach((user: any) => {
-        this.cryptoLottery.mint(user.address, "100");
+        this.cryptoLottery.mint(user.address, erc20TokenAmount);
         this.cryptoLottery
           .connect(user)
-          .approve(this.weeklyCryptoLottery.address, "100");
-        this.weeklyCryptoLottery.connect(user).buy("100");
+          .approve(this.weeklyCryptoLottery.address, erc20TokenAmount);
+        this.weeklyCryptoLottery.connect(user).buy(erc20TokenAmount);
       });
     });
 
@@ -242,11 +269,11 @@ describe("WeeklyCryptoLottery", function () {
         _keyHash
       );
       this.signers.forEach((user: any) => {
-        this.cryptoLottery.mint(user.address, "100");
+        this.cryptoLottery.mint(user.address, erc20TokenAmount);
         this.cryptoLottery
           .connect(user)
-          .approve(this.weeklyCryptoLottery.address, "100");
-        this.weeklyCryptoLottery.connect(user).buy("100");
+          .approve(this.weeklyCryptoLottery.address, erc20TokenAmount);
+        this.weeklyCryptoLottery.connect(user).buy(erc20TokenAmount);
       });
 
       const randomSendingRules = [
