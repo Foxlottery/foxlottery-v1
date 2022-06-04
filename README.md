@@ -44,7 +44,6 @@ npx hardhat run --network localhost scripts/hardhat/deploy.ts
 npx hardhat run --network ropsten scripts/deploy.ts
 ```
 
-
 # White Paper
 [White Paper](https://cryptolottery.gitbook.io/cryptolottery-whitepaper/whitepaper/english)
 

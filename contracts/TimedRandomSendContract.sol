@@ -1,4 +1,4 @@
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.14;
 
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -14,7 +14,7 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
  * @notice This smart contract collects ERC20 tokens in a single wallet and
            uses chainlink VRF to transfer the ERC20 tokens to the winners.
  */
-
+// 古いバージョン
 contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     using SafeMath for uint256;
 
@@ -22,10 +22,11 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     string public symbol;
     uint public cycle;
     uint public closeTimestamp;
-    uint public eventCounts = 1;
+    uint public eventCount = 1;
     address[] public participants;
     IERC20 public erc20; // erc20 token used for lottery
     mapping(address => uint256) public balanceOf; // maps a wallet address to a wallet balance
+    uint public ticketPrice; // チケットの価格を定義
 
     uint immutable minimumBuyLotteryPrice = 10 ** 16; // 0.001
     uint immutable baseTokenAmount = 10 ** 18;
@@ -57,8 +58,8 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     uint256 public randomResult;
 
     // Chainlink Value Maps
-    mapping(uint256 => uint256) public randomMap; // maps a eventCounts to a random number
-    mapping(bytes32 => uint256) public requestMap; // maps a requestId to a eventCounts
+    mapping(uint256 => uint256) public randomMap; // maps a eventCount to a random number
+    mapping(bytes32 => uint256) public requestMap; // maps a requestId to a eventCount
 
     /**
     * @notice set initialize values
@@ -91,12 +92,19 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
         keyHash = _keyhash;
     }
 
+    // チケットを贈る
+    // オーナーだけが、実行できる
+    function sendTicket() public onlyOwner {
+
+    }
+
     /**
     * @notice buy lottery ticket
     * @param _amount Amount of lottery tickets
     * @dev When you buy a lottery ticket, you lock the funds in a smart contract wallet.
     */
-    function buy(uint256 _amount) public payable {
+    // オーナーだけがチケットを購入できるようにする or 誰でもチケットを購入できるようにする、パラメータで調整できるようにする。
+    function buy(uint256 _amount) public payable onlyBeforeCloseTimestamp {
         require(minimumBuyLotteryPrice <= _amount, "TimedRandomSendContract: _amount must be set above the minimum price");
         require(erc20.balanceOf(msg.sender) >= _amount, "TimedRandomSendContract: Not enough erc20 tokens.");
 
@@ -113,20 +121,27 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     /**
     * @notice random send ERC20 token to lottery participants
     * @dev require there is randomMap[thisEventCounts] value and after close time
+    * 
     */
-    function randSend() public onlyAfterCloseTimestamp onlyHaveThisEventRandomNumber {
+    function randomSend(uint randomSendingRuleId, uint randomSendingCurrentCount, address winnerAddress) public onlyAfterCloseTimestamp onlyHaveCurrentEventRandomNumber {
+
+        // ランダム送金ではなく、ランダムでクーポン券を送るようにする
+    }
+
+    // クーポンをerc20カードに交換する
+    function exchangeCouponToErc20() public {
+
+    }
+
+    function completeCurrentEvent() public onlyAfterCloseTimestamp onlyHaveCurrentEventRandomNumber {
+        // require complete random send & difinitely send
+        eventCount += 1;
+        closeTimestamp += cycle;
+        delete participants; // reset participants
+    }
+
+    function difinitelySend() public onlyAfterCloseTimestamp {
         uint constantTotalSupply = totalSupply();
-
-        // random send
-        for (uint index = 0; index < randomSendingRuleIds.length; index++) {
-            uint id = randomSendingRuleIds[index];
-            if (id == 0) { continue; }
-            uint ratio = randomSendingRuleRatio[id];
-            uint sendingCount = randomSendingRuleSendingCount[id];
-            _sendingDestinationDetermination(sendingCount, ratio, constantTotalSupply);
-        }
-
-        // difinitely send
         for (uint definitelySendingRuleId = 1; definitelySendingRuleId < definitelySendingRuleIds.length; definitelySendingRuleId++) {
             address destinationAddress = definitelySendingRuleAddress[definitelySendingRuleId];
             if (destinationAddress == address(0)) { continue; }
@@ -134,46 +149,14 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
 
             erc20.transfer(destinationAddress, constantTotalSupply.div(ratio));
         }
-
-        eventCounts += 1;
-        closeTimestamp += cycle;
-        delete participants; // reset participants
     }
 
-    /**
-    * @notice Determination of winners and transfer of ERC20 tokens
-    * @param _sendingCount Number of times to send
-    * @param _ratio Ratio to be sent
-    * @param _constantTotalSupply Constant value of the amount collected
-    */
-    function _sendingDestinationDetermination(uint _sendingCount, uint _ratio, uint _constantTotalSupply) private {
-        for (uint count = 0; count < _sendingCount; count++) {
-            uint randWithTotalSupply = getRandWithTotalSupply();
-            address winnerAddress = _getWinnerAddress(randWithTotalSupply);
-            uint dividendAmount = _constantTotalSupply.div(_ratio);
-
-            // send erc20 to winner
-            erc20.transfer(winnerAddress, dividendAmount);
-        }
-    }
 
     /**
-    * @notice get winner address
-    * @param _randWithTotalSupply random number
+    * @notice get random sending rule ids
     */
-    function _getWinnerAddress(uint _randWithTotalSupply) private view returns(address) {
-        uint number = 0;
-        address winnerAddress;
-        for (uint count = 0; count < participants.length; count++) {
-            // TODO: この辺の当選ロジックは修正する
-            if (number < _randWithTotalSupply && _randWithTotalSupply > number + balanceOf[participants[count]]) {
-                winnerAddress = participants[count];
-                break;
-            }
-            number += balanceOf[participants[count]];
-        }
-        // Return the winner's address.
-        return winnerAddress;
+    function getRandomSendingRuleIds() public view returns(uint[] memory) {
+        return randomSendingRuleIds;
     }
 
     /**
@@ -310,10 +293,15 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
         _;
     }
 
+    modifier onlyBeforeCloseTimestamp() {
+        require(closeTimestamp <= block.timestamp, "TimedRandomSendContract: This operation can be performed only before CloseTime.");
+        _;
+    }
+
     /**
     * @notice require have randomMap[thisEventCounts] value
     */
-    modifier onlyHaveThisEventRandomNumber() {
+    modifier onlyHaveCurrentEventRandomNumber() {
         require(thisEventRandomNumber() != 0, "TimedRandomSendContract: don't have this event random number");
         _;
     }
@@ -321,7 +309,7 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     /**
     * @notice require don't have randomMap[thisEventCounts] value
     */
-    modifier onlyNotHaveThisEventRandomNumber() {
+    modifier onlyNotHaveCurrentEventRandomNumber() {
         require(thisEventRandomNumber() == 0, "TimedRandomSendContract: have this event random number");
         _;
     }
@@ -345,22 +333,15 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
         return totalAmount;
     }
 
-    function getRandomNumber() public onlyNotHaveThisEventRandomNumber onlyAfterCloseTimestamp returns (uint rand) {
+    function getRandomNumber() public onlyNotHaveCurrentEventRandomNumber onlyAfterCloseTimestamp returns (uint rand) {
         // production
         // bytes32 requestId = getRandomNumberFromChainLink();
-        // requestMap[requestId] = eventCounts;
-        // return randomMap[eventCounts];
+        // requestMap[requestId] = eventCount;
+        // return randomMap[eventCount];
 
         // dev
-        randomMap[eventCounts] = getNumber(block.timestamp);
+        randomMap[eventCount] = getNumber(block.timestamp);
         return getNumber(block.timestamp);
-    }
-
-    /**
-    * @notice get number with totalSupply
-    */
-    function getRandWithTotalSupply() public view returns (uint) {
-        return getNumber(totalSupply() + thisEventRandomNumber());
     }
 
     /**
@@ -381,7 +362,7 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
     * @notice get this event random number from randomMap
     */
     function thisEventRandomNumber() private view returns(uint) {
-        return randomMap[eventCounts];
+        return randomMap[eventCount];
     }
 
      /** 
@@ -399,7 +380,7 @@ contract TimedRandomSendContract is VRFConsumerBase, Ownable {
         randomResult = _randomness;
         // constrain random number between 1-10
         uint256 modRandom = randomResult;
-        // get eventCounts that created the request
+        // get eventCount that created the request
         uint256 thisEventCounts = requestMap[_requestId];
         // store random result in token image map
         randomMap[thisEventCounts] = modRandom;

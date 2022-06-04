@@ -42,8 +42,21 @@ async function main() {
   await weeklyCryptoLottery.createRandomSendingRule(1 / 0.25, 1);
 
   // randomSendingRuleIds
-  await weeklyCryptoLottery.randomSendingRuleIds();
+  const randomSendingRuleIds =
+    await weeklyCryptoLottery.getRandomSendingRuleIds();
 
+  randomSendingRuleIds.forEach(async function (randomSendingRuleId: any) {
+    const ratio = await weeklyCryptoLottery.randomSendingRuleRatioById(
+      randomSendingRuleId
+    );
+    const count = await weeklyCryptoLottery.randomSendingRuleSendingCountById(
+      randomSendingRuleId
+    );
+
+    console.log(
+      `randomSendingRuleId: ${randomSendingRuleId}, ratio: ${ratio}, count: ${count}`
+    );
+  });
   if (process.env.MAIN_ACCOUNT_ADDRESS) {
     await cryptoLottery.mint(
       process.env.MAIN_ACCOUNT_ADDRESS,

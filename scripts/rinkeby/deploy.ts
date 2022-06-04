@@ -28,7 +28,7 @@ async function main() {
   const weeklyCryptoLottery = await WeeklyCryptoLottery.deploy(
     "WeeklyCryptoLottery",
     "WLT",
-    86400 * 7,
+    60, // 1 minits cycle
     cryptoLottery.address,
     _link,
     _coordinator,

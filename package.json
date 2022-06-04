@@ -1,5 +1,6 @@
 {
-  "name": "hardhat-project",
+  "name": "foxlottery-v1",
+  "license": "UNLICENSED",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.3",
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
