@@ -17,6 +17,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBase, Ownable {
     uint public cycleTimestamp;
     uint public closeTimestamp;
     IERC20 public erc20; // erc20 token used for lottery
+    uint public sellerCommission;
     bool public isOnlyOwner;
 
     // Chainlink VRF Variables
@@ -51,6 +52,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBase, Ownable {
         address _link,
         address _coordinator, 
         bytes32 _keyHash,
+        uint _sellerCommission,
         uint __ticketPrice,
         bool _isOnlyOwner)
     VRFConsumerBase(_coordinator, _link)
@@ -60,6 +62,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBase, Ownable {
         cycleTimestamp = _cycleTimestamp;
         closeTimestamp = block.timestamp + _cycleTimestamp;
         erc20 = _erc20;
+        sellerCommission = _sellerCommission;
         _ticketPrice[index] = __ticketPrice;
         isOnlyOwner = _isOnlyOwner;
         
@@ -83,10 +86,11 @@ contract TokenTimedRandomSendContract is VRFConsumerBase, Ownable {
      /**
     * @notice buy lottery ticket
     * @param __ticketCount Amount of lottery tickets
+    * @param seller ticket seller
     * @dev When you buy a lottery ticket, you lock the funds in a smart contract wallet.
     * onlyOwnerable オーナーだけがチケットを購入できるようにする or 誰でもチケットを購入できるようにする
     */
-    function buyTicket(uint256 __ticketCount) public payable onlyBeforeCloseTimestamp onlyOwnerable {
+    function buyTicket(uint256 __ticketCount, address seller) public payable onlyBeforeCloseTimestamp onlyOwnerable {
         uint tokenAmount = __ticketCount * _ticketPrice[index];
         require(erc20.balanceOf(msg.sender) >= tokenAmount, "TokenTimedRandomSendContract: Not enough erc20 tokens.");
 
@@ -102,6 +106,8 @@ contract TokenTimedRandomSendContract is VRFConsumerBase, Ownable {
 
         // Lock the Lottery in the contract
         erc20.transferFrom(msg.sender, address(this), tokenAmount);
+
+        erc20.transfer(seller, tokenAmount.div(sellerCommission));
     }
 
     function sendTicket(uint ticketIdsIndex, address to) public onlyOwner {
@@ -150,7 +156,6 @@ contract TokenTimedRandomSendContract is VRFConsumerBase, Ownable {
         }
         _;
     }
-
 
     function ticketIdFromTicketIds(uint _ticketIdsIndex) internal view returns(uint) {
         return _ticketIds[index][msg.sender][_ticketIdsIndex];

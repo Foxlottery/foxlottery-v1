@@ -8,26 +8,35 @@ const _keyHash =
 const _ticketPrice = String(10 ** 19);
 const _cycleTimestamp = 120;
 const index = 1;
+const sellerCommission = 100;
 
-async function mintAndApprove(
-  lotteryERC20: any,
-  weeklyLottery: any,
-  user: any,
-  tokenAmount: any
-) {
-  await lotteryERC20.mint(user.address, tokenAmount);
-  await lotteryERC20.connect(user).approve(weeklyLottery.address, tokenAmount);
-}
-
-async function mintAndBuyTicket(
+async function approveAndBuyTicket(
   lotteryERC20: any,
   weeklyLottery: any,
   user: any,
   tokenAmount: any,
-  _ticketCount: any
+  _ticketCount: any,
+  seller: any
 ) {
-  await mintAndApprove(lotteryERC20, weeklyLottery, user, tokenAmount);
-  await weeklyLottery.connect(user).buyTicket(_ticketCount);
+  await lotteryERC20.connect(user).approve(weeklyLottery.address, tokenAmount);
+  await weeklyLottery.connect(user).buyTicket(_ticketCount, seller.address);
+}
+
+async function printData(
+  signers: any,
+  lotteryERC20: any,
+  weeklyLottery: any,
+  caller: string
+) {
+  console.log(caller);
+  signers = await ethers.getSigners();
+  await signers.forEach(async (user: any) => {
+    console.log(
+      `address: ${user.address}, token amount: ${await lotteryERC20.balanceOf(
+        user.address
+      )}`
+    );
+  });
 }
 
 describe("TokenTimedRandomSendContract", function () {
@@ -45,13 +54,7 @@ describe("TokenTimedRandomSendContract", function () {
       // mint erc20 token to wallet address
       await this.signers.forEach(async (user: any) => {
         this.lotteryERC20.mint(user.address, String(10 ** 20));
-        console.log(
-          `address: ${
-            user.address
-          }, token amount: ${await this.lotteryERC20.balanceOf(user.address)}`
-        );
       });
-
       this.weeklyLottery = await this.weeklyLottery.deploy(
         "weeklyLottery",
         "WLT",
@@ -60,8 +63,15 @@ describe("TokenTimedRandomSendContract", function () {
         _link,
         _coordinator,
         _keyHash,
+        sellerCommission,
         _ticketPrice,
         _isOnlyOwner
+      );
+      await printData(
+        this.signers,
+        this.lotteryERC20,
+        this.weeklyLottery,
+        "beforeEach"
       );
     });
 
@@ -108,12 +118,13 @@ describe("TokenTimedRandomSendContract", function () {
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         user,
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
 
       // ticketLastIdが追加されていること
@@ -155,6 +166,26 @@ describe("TokenTimedRandomSendContract", function () {
         ticketLastId
       );
       expect(ticketReceivedAt <= new Date().getTime()).to.equal(true);
+
+      // 送金ができていること
+      const buyerAmount = await this.lotteryERC20.balanceOf(user.address);
+      expect(buyerAmount).to.equal("70000000000000000000");
+
+      // sellerがtokenをもらっていること
+      const sellerAmount = await this.lotteryERC20.balanceOf(
+        this.signers[10].address
+      );
+      expect(sellerAmount).to.equal("100300000000000000000");
+
+      const totalSupply = await this.weeklyLottery.totalSupply();
+      expect(totalSupply).to.equal("29700000000000000000");
+
+      await printData(
+        this.signers,
+        this.lotteryERC20,
+        this.weeklyLottery,
+        "After"
+      );
     });
 
     it("Two user should buy ticket", async function () {
@@ -164,20 +195,22 @@ describe("TokenTimedRandomSendContract", function () {
 
       const user = this.signers[1];
       // first
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         this.signers[0],
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
       // second
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         this.signers[1],
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
 
       // ticketLastIdが追加されていること
@@ -219,6 +252,29 @@ describe("TokenTimedRandomSendContract", function () {
         ticketLastId
       );
       expect(ticketReceivedAt <= new Date().getTime()).to.equal(true);
+
+      // 送金ができていること
+      let buyerAmount = await this.lotteryERC20.balanceOf(user.address);
+      expect(buyerAmount).to.equal("70000000000000000000");
+
+      buyerAmount = await this.lotteryERC20.balanceOf(this.signers[1].address);
+      expect(buyerAmount).to.equal("70000000000000000000");
+
+      // sellerがtokenをもらっていること
+      const sellerAmount = await this.lotteryERC20.balanceOf(
+        this.signers[10].address
+      );
+      expect(sellerAmount).to.equal("100600000000000000000");
+
+      const totalSupply = await this.weeklyLottery.totalSupply();
+      expect(totalSupply).to.equal("59400000000000000000");
+
+      await printData(
+        this.signers,
+        this.lotteryERC20,
+        this.weeklyLottery,
+        "After"
+      );
     });
 
     it("Three user should buy ticket", async function () {
@@ -228,28 +284,31 @@ describe("TokenTimedRandomSendContract", function () {
 
       const user = this.signers[2];
       // first
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         this.signers[0],
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
       // second
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         this.signers[1],
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
       // third
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         this.signers[2],
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
 
       // ticketLastIdが追加されていること
@@ -291,6 +350,34 @@ describe("TokenTimedRandomSendContract", function () {
         ticketLastId
       );
       expect(ticketReceivedAt <= new Date().getTime()).to.equal(true);
+
+      // 送金ができていること
+      let buyerAmount = await this.lotteryERC20.balanceOf(
+        this.signers[2].address
+      );
+      expect(buyerAmount).to.equal("70000000000000000000");
+
+      buyerAmount = await this.lotteryERC20.balanceOf(this.signers[1].address);
+      expect(buyerAmount).to.equal("70000000000000000000");
+
+      buyerAmount = await this.lotteryERC20.balanceOf(this.signers[0].address);
+      expect(buyerAmount).to.equal("70000000000000000000");
+
+      // sellerがtokenをもらっていること
+      const sellerAmount = await this.lotteryERC20.balanceOf(
+        this.signers[10].address
+      );
+      expect(sellerAmount).to.equal("100900000000000000000");
+
+      const totalSupply = await this.weeklyLottery.totalSupply();
+      expect(totalSupply).to.equal("89100000000000000000");
+
+      await printData(
+        this.signers,
+        this.lotteryERC20,
+        this.weeklyLottery,
+        "After"
+      );
     });
 
     it("The same user buys ticket again.", async function () {
@@ -300,36 +387,40 @@ describe("TokenTimedRandomSendContract", function () {
 
       const user = this.signers[0];
       // first
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         this.signers[0],
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
       // second
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         this.signers[1],
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
       // third
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         this.signers[2],
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
       // The same user buys ticket again.
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         this.signers[0], // same user
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
 
       // ticketLastIdが追加されていること
@@ -387,6 +478,27 @@ describe("TokenTimedRandomSendContract", function () {
         ticketLastId
       );
       expect(ticketReceivedAt <= new Date().getTime()).to.equal(true);
+
+      // 送金ができていること
+      let buyerAmount = await this.lotteryERC20.balanceOf(
+        this.signers[2].address
+      );
+      expect(buyerAmount).to.equal("70000000000000000000");
+
+      buyerAmount = await this.lotteryERC20.balanceOf(this.signers[1].address);
+      expect(buyerAmount).to.equal("70000000000000000000");
+
+      buyerAmount = await this.lotteryERC20.balanceOf(this.signers[0].address);
+      expect(buyerAmount).to.equal("40000000000000000000");
+
+      // sellerがtokenをもらっていること
+      const sellerAmount = await this.lotteryERC20.balanceOf(
+        this.signers[10].address
+      );
+      expect(sellerAmount).to.equal("101200000000000000000");
+
+      const totalSupply = await this.weeklyLottery.totalSupply();
+      expect(totalSupply).to.equal("118800000000000000000");
     });
 
     it("Owner should send ticket", async function () {
@@ -395,12 +507,13 @@ describe("TokenTimedRandomSendContract", function () {
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         user,
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
 
       await this.weeklyLottery.sendTicket(0, this.signers[1].address);
@@ -445,6 +558,9 @@ describe("TokenTimedRandomSendContract", function () {
       // participantCountが更新されていること
       const participantCount = await this.weeklyLottery.participantCount(index);
       expect(participantCount).to.equal("2");
+
+      const totalSupply = await this.weeklyLottery.totalSupply();
+      expect(totalSupply).to.equal("29700000000000000000");
     });
 
     it("Non-Owner can not send ticket", async function () {
@@ -453,17 +569,21 @@ describe("TokenTimedRandomSendContract", function () {
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         user,
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
 
       await expect(
         this.weeklyLottery.connect(user).sendTicket(0, this.signers[2].address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
+
+      const totalSupply = await this.weeklyLottery.totalSupply();
+      expect(totalSupply).to.equal("29700000000000000000");
     });
   });
 
@@ -481,12 +601,8 @@ describe("TokenTimedRandomSendContract", function () {
       // mint erc20 token to wallet address
       await this.signers.forEach(async (user: any) => {
         this.lotteryERC20.mint(user.address, String(10 ** 20));
-        console.log(
-          `address: ${
-            user.address
-          }, token amount: ${await this.lotteryERC20.balanceOf(user.address)}`
-        );
       });
+
       this.weeklyLottery = await this.weeklyLottery.deploy(
         "weeklyLottery",
         "WLT",
@@ -495,8 +611,16 @@ describe("TokenTimedRandomSendContract", function () {
         _link,
         _coordinator,
         _keyHash,
+        sellerCommission,
         _ticketPrice,
         _isOnlyOwner
+      );
+
+      await printData(
+        this.signers,
+        this.lotteryERC20,
+        this.weeklyLottery,
+        "beforeEach"
       );
     });
 
@@ -543,12 +667,13 @@ describe("TokenTimedRandomSendContract", function () {
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         user,
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
 
       // ticketLastIdが追加されていること
@@ -599,22 +724,22 @@ describe("TokenTimedRandomSendContract", function () {
 
       const user = this.signers[1];
       // first
-      await mintAndBuyTicket(
+      await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         this.signers[0],
         tokenAmount,
-        _ticketCount
+        _ticketCount,
+        this.signers[10]
       );
       // second
-      await mintAndApprove(
-        this.lotteryERC20,
-        this.weeklyLottery,
-        user,
-        tokenAmount
-      );
+      await this.lotteryERC20
+        .connect(user)
+        .approve(this.weeklyLottery.address, tokenAmount);
       await expect(
-        this.weeklyLottery.connect(user).buyTicket(_ticketCount)
+        this.weeklyLottery
+          .connect(user)
+          .buyTicket(_ticketCount, this.signers[10].address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
       // ticketLastIdが追加されてないこと
       const ticketLastId = await this.weeklyLottery.ticketLastId(index);
