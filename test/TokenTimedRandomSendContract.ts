@@ -67,12 +67,104 @@ describe("TokenTimedRandomSendContract", function () {
         _ticketPrice,
         _isOnlyOwner
       );
+      await this.weeklyLottery.startAccepting();
+
+      // set rule
+      const randomSendingRules = [
+        { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
+        { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
+        { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
+      ];
+      randomSendingRules.forEach(async (rule) => {
+        await this.weeklyLottery.createRandomSendingRule(
+          rule.raito,
+          rule.sendingCount
+        );
+      });
+
+      await this.weeklyLottery.createDefinitelySendingRule(
+        1 / 0.2, // 20%
+        this.signers[0].address // owner
+      );
+
       await printData(
         this.signers,
         this.lotteryERC20,
         this.weeklyLottery,
         "beforeEach"
       );
+    });
+
+    it("should delete and create random sending radio", async function () {
+      await this.weeklyLottery.createRandomSendingRule(1 / 0.2, 1);
+      let randomSendingRuleRatioTotalAmount =
+        await this.weeklyLottery.randomSendingRuleRatioTotalAmount(index);
+      expect(randomSendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.6);
+
+      await this.weeklyLottery.deleteRandomSendingRule(3);
+      randomSendingRuleRatioTotalAmount =
+        await this.weeklyLottery.randomSendingRuleRatioTotalAmount(index);
+      expect(randomSendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.4);
+
+      let randomSendingRuleIds = await this.weeklyLottery.randomSendingRuleIds(
+        index
+      );
+      expect(randomSendingRuleIds[0]).to.equal(1);
+      expect(randomSendingRuleIds[1]).to.equal(2);
+      expect(randomSendingRuleIds[2]).to.equal(3);
+      expect(randomSendingRuleIds.length).to.equal(3);
+
+      // create after delete
+      await this.weeklyLottery.createRandomSendingRule(1 / 0.1, 1);
+      randomSendingRuleRatioTotalAmount =
+        await this.weeklyLottery.randomSendingRuleRatioTotalAmount(index);
+      expect(randomSendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.5);
+      randomSendingRuleIds = await this.weeklyLottery.randomSendingRuleIds(
+        index
+      );
+      expect(randomSendingRuleIds[0]).to.equal(1);
+      expect(randomSendingRuleIds[1]).to.equal(2);
+      expect(randomSendingRuleIds[2]).to.equal(3);
+      expect(randomSendingRuleIds[3]).to.equal(4);
+      expect(randomSendingRuleIds.length).to.equal(4);
+    });
+
+    it("should delete and create definitely sending radio", async function () {
+      await this.weeklyLottery.createDefinitelySendingRule(
+        1 / 0.1, // 10%
+        this.signers[0].address // owner
+      );
+      let definitelySendingRuleIds =
+        await this.weeklyLottery.definitelySendingRuleIds(index);
+      expect(definitelySendingRuleIds.length).to.equal(2);
+      expect(definitelySendingRuleIds[0]).to.equal(1);
+      expect(definitelySendingRuleIds[1]).to.equal(2);
+      let definitelySendingRuleRatioTotalAmount =
+        await this.weeklyLottery.definitelySendingRuleRatioTotalAmount(index);
+      expect(definitelySendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.3);
+
+      await this.weeklyLottery.deleteDefinitelySendingRule(1);
+      definitelySendingRuleIds =
+        await this.weeklyLottery.definitelySendingRuleIds(index);
+      expect(definitelySendingRuleIds.length).to.equal(1);
+      expect(definitelySendingRuleIds[0]).to.equal(1);
+      definitelySendingRuleRatioTotalAmount =
+        await this.weeklyLottery.definitelySendingRuleRatioTotalAmount(index);
+      expect(definitelySendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.2);
+
+      // create after delete
+      await this.weeklyLottery.createDefinitelySendingRule(
+        1 / 0.1, // 10%
+        this.signers[0].address // owner
+      );
+      definitelySendingRuleRatioTotalAmount =
+        await this.weeklyLottery.definitelySendingRuleRatioTotalAmount(index);
+      expect(definitelySendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.3);
+      definitelySendingRuleIds =
+        await this.weeklyLottery.definitelySendingRuleIds(index);
+      expect(definitelySendingRuleIds[0]).to.equal(1);
+      expect(definitelySendingRuleIds[1]).to.equal(2);
+      expect(definitelySendingRuleIds.length).to.equal(2);
     });
 
     it("should have correct init value", async function () {
@@ -615,6 +707,7 @@ describe("TokenTimedRandomSendContract", function () {
         _ticketPrice,
         _isOnlyOwner
       );
+      await this.weeklyLottery.startAccepting();
 
       await printData(
         this.signers,
