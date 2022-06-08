@@ -1,14 +1,14 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-const _link = "0x01BE23585060835E02B77ef475b0Cc51aA1e0709";
-const _coordinator = "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B";
-const _keyHash =
-  "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311";
 const _ticketPrice = String(10 ** 19);
 const _cycleTimestamp = 120;
 const index = 1;
 const sellerCommission = 100;
+const subscriptionId = 1;
+const vrfCoordinator = "0x6168499c0cFfCaCD319c818142124B7A15E857ab";
+const keyHash =
+  "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc";
 
 async function approveAndBuyTicket(
   lotteryERC20: any,
@@ -60,12 +60,12 @@ describe("TokenTimedRandomSendContract", function () {
         "WLT",
         _cycleTimestamp,
         this.lotteryERC20.address,
-        _link,
-        _coordinator,
-        _keyHash,
         sellerCommission,
         _ticketPrice,
-        _isOnlyOwner
+        _isOnlyOwner,
+        subscriptionId,
+        vrfCoordinator,
+        keyHash
       );
       await this.weeklyLottery.startAccepting();
 
@@ -173,7 +173,6 @@ describe("TokenTimedRandomSendContract", function () {
       const symbol = await this.weeklyLottery.symbol();
       const cycleTimestamp = await this.weeklyLottery.cycleTimestamp();
       const ticketPrice = await this.weeklyLottery.ticketPrice(index);
-      const keyHash = await this.weeklyLottery.keyHash();
       const ticketLastId = await this.weeklyLottery.ticketLastId(index);
       const ticketLastNumber = await this.weeklyLottery.ticketLastNumber(
         index,
@@ -195,7 +194,6 @@ describe("TokenTimedRandomSendContract", function () {
       expect(ticketPrice).to.equal(_ticketPrice);
       expect(cycleTimestamp).to.equal(_cycleTimestamp.toString());
       expect(this.lotteryERC20.address).to.equal(erc20);
-      expect(keyHash).to.equal(_keyHash);
       expect(ticketLastId).to.equal("0");
       expect(ticketLastNumber).to.equal("0");
       expect(ticketCount).to.equal("0");
@@ -700,12 +698,12 @@ describe("TokenTimedRandomSendContract", function () {
         "WLT",
         _cycleTimestamp,
         this.lotteryERC20.address,
-        _link,
-        _coordinator,
-        _keyHash,
         sellerCommission,
         _ticketPrice,
-        _isOnlyOwner
+        _isOnlyOwner,
+        subscriptionId,
+        vrfCoordinator,
+        keyHash
       );
       await this.weeklyLottery.startAccepting();
 
@@ -723,7 +721,6 @@ describe("TokenTimedRandomSendContract", function () {
       const symbol = await this.weeklyLottery.symbol();
       const cycleTimestamp = await this.weeklyLottery.cycleTimestamp();
       const ticketPrice = await this.weeklyLottery.ticketPrice(index);
-      const keyHash = await this.weeklyLottery.keyHash();
       const ticketLastId = await this.weeklyLottery.ticketLastId(index);
       const ticketLastNumber = await this.weeklyLottery.ticketLastNumber(
         index,
@@ -745,7 +742,6 @@ describe("TokenTimedRandomSendContract", function () {
       expect(ticketPrice).to.equal(_ticketPrice);
       expect(cycleTimestamp).to.equal(_cycleTimestamp.toString());
       expect(this.lotteryERC20.address).to.equal(erc20);
-      expect(keyHash).to.equal(_keyHash);
       expect(ticketLastId).to.equal("0");
       expect(ticketLastNumber).to.equal("0");
       expect(ticketCount).to.equal("0");

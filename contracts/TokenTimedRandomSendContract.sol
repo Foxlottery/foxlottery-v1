@@ -6,10 +6,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
+// chainlink
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
-
-contract TokenTimedRandomSendContract is VRFConsumerBase, Ownable {
+contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     using SafeMath for uint256;
 
     // constant
@@ -20,14 +21,6 @@ contract TokenTimedRandomSendContract is VRFConsumerBase, Ownable {
     IERC20 public erc20; // erc20 token used for lottery
     uint public sellerCommission;
     bool public isOnlyOwner;
-
-    // Chainlink VRF Variables
-    bytes32 public keyHash;
-    uint256 public fee = 0.1 ether; // 0.1 link
-
-    // Chainlink Value Maps
-    mapping(uint256 => uint256) public randomMap; // maps a index to a random number
-    mapping(bytes32 => uint256) public requestMap; // maps a requestId to a index
 
     uint public index = 1; // event count
 
@@ -60,20 +53,55 @@ contract TokenTimedRandomSendContract is VRFConsumerBase, Ownable {
     mapping(uint => mapping(uint => uint)) private _definitelySendingRuleRatio;
     mapping(uint => uint) public definitelySendingRuleRatioTotalAmount;
 
-    uint immutable baseTokenAmount = 10 ** 18;
+    VRFCoordinatorV2Interface COORDINATOR;
+    uint64 immutable subscriptionId;
+    // chainlink vrf coordinator
+    // see https://docs.chain.link/docs/vrf-contracts/#configurations
+    address public vrfCoordinator = 0x6168499c0cFfCaCD319c818142124B7A15E857ab;
+
+    // The gas lane to use, which specifies the maximum gas price to bump to.
+    // For a list of available gas lanes on each network,
+    // see https://docs.chain.link/docs/vrf-contracts/#configurations
+    bytes32 public keyHash = 0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc;
+    uint32 public callbackGasLimit = 100000;
+    uint16 public requestConfirmations = 3;
+    uint32 public numWords = 1;
+
+    uint256[] public randomWords;
+
+    uint public immutable baseTokenAmount = 10 ** 18;
+
+    // TODO: 制約を加えるcloseしていること、randomが既にある場合は2回目を取得しない
+    function fulfillRandomWords(
+        uint256, /* requestId */
+        uint256[] memory _randomWords
+    ) internal override {
+        randomWords = _randomWords;
+    }
+
+    function requestRandomWords() external onlyOwner {
+        // Will revert if subscription is not set and funded.
+        COORDINATOR.requestRandomWords(
+            keyHash,
+            subscriptionId,
+            requestConfirmations,
+            callbackGasLimit,
+            numWords
+        );
+    }
 
     constructor(
         string memory _name,
         string memory _symbol,
         uint _cycleTimestamp,
         IERC20 _erc20,
-        address _link,
-        address _coordinator, 
-        bytes32 _keyHash,
         uint _sellerCommission,
         uint __ticketPrice,
-        bool _isOnlyOwner)
-    VRFConsumerBase(_coordinator, _link)
+        bool _isOnlyOwner,
+        uint64 _subscriptionId,
+        address _vrfCoordinator,
+        bytes32 _keyHash
+    ) VRFConsumerBaseV2(vrfCoordinator)
     {
         name = _name;
         symbol = _symbol;
@@ -83,30 +111,12 @@ contract TokenTimedRandomSendContract is VRFConsumerBase, Ownable {
         sellerCommission = _sellerCommission;
         _ticketPrice[index] = __ticketPrice;
         isOnlyOwner = _isOnlyOwner;
-        
-        // Chainlink setters
+
+        // chainlink
+        COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
+        subscriptionId = _subscriptionId;
+        vrfCoordinator = _vrfCoordinator;
         keyHash = _keyHash;
-    }
-
-    /**
-     * Callback function used by VRF Coordinator
-     */
-    function fulfillRandomness(bytes32 _requestId, uint256 _randomness) internal override {
-        uint256 randomResult = _randomness;
-        // constrain random number between 1-10
-        uint256 modRandom = randomResult;
-        // get index that created the request
-        uint256 _index = requestMap[_requestId];
-        // store random result in token image map
-        randomMap[_index] = modRandom;
-    }
-
-    /** 
-     * Requests randomness 
-     */
-    function getRandomNumber() public returns (bytes32 requestId) {
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK - fill contract with faucet");
-        return requestRandomness(keyHash, fee);
     }
 
      /**
@@ -320,5 +330,9 @@ contract TokenTimedRandomSendContract is VRFConsumerBase, Ownable {
     function startAccepting() public onlyOwner {
         // Once this is changed to true, it cannot be changed to false until close.
         isAccepting = true;
+    }
+
+    function currentRandomWords() public view returns(uint) {
+        return randomWords[index - 1];
     }
 }
