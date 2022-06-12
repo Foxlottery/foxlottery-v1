@@ -2,13 +2,19 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 const _ticketPrice = String(10 ** 19);
-const _cycleTimestamp = 120;
 const index = 1;
 const sellerCommission = 100;
 const subscriptionId = 1;
 const vrfCoordinator = "0x6168499c0cFfCaCD319c818142124B7A15E857ab";
 const keyHash =
   "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc";
+const statuses = [
+  "ACCEPTING",
+  "RANDOM_VALUE_GETTING",
+  "TOKEN_SENDING",
+  "DONE",
+  "RULE_SETTING",
+];
 
 async function approveAndBuyTicket(
   lotteryERC20: any,
@@ -30,6 +36,8 @@ async function printData(
 ) {
   console.log(caller);
   signers = await ethers.getSigners();
+  const status = await weeklyLottery.status();
+  console.log(`status: ${statuses[status]}`);
   await signers.forEach(async (user: any) => {
     console.log(
       `address: ${user.address}, token amount: ${await lotteryERC20.balanceOf(
@@ -40,7 +48,7 @@ async function printData(
 }
 
 describe("TokenTimedRandomSendContract", function () {
-  describe("when isOnlyOwner = false", function () {
+  describe("setting rule test", function () {
     const _isOnlyOwner = false;
 
     beforeEach(async function () {
@@ -58,7 +66,6 @@ describe("TokenTimedRandomSendContract", function () {
       this.weeklyLottery = await this.weeklyLottery.deploy(
         "weeklyLottery",
         "WLT",
-        _cycleTimestamp,
         this.lotteryERC20.address,
         sellerCommission,
         _ticketPrice,
@@ -67,7 +74,6 @@ describe("TokenTimedRandomSendContract", function () {
         vrfCoordinator,
         keyHash
       );
-      await this.weeklyLottery.startAccepting();
 
       // set rule
       const randomSendingRules = [
@@ -98,17 +104,16 @@ describe("TokenTimedRandomSendContract", function () {
     it("should delete and create random sending radio", async function () {
       await this.weeklyLottery.createRandomSendingRule(1 / 0.2, 1);
       let randomSendingRuleRatioTotalAmount =
-        await this.weeklyLottery.randomSendingRuleRatioTotalAmount(index);
+        await this.weeklyLottery.randomSendingRuleRatioTotalAmount();
       expect(randomSendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.6);
 
       await this.weeklyLottery.deleteRandomSendingRule(3);
       randomSendingRuleRatioTotalAmount =
-        await this.weeklyLottery.randomSendingRuleRatioTotalAmount(index);
+        await this.weeklyLottery.randomSendingRuleRatioTotalAmount();
       expect(randomSendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.4);
 
-      let randomSendingRuleIds = await this.weeklyLottery.randomSendingRuleIds(
-        index
-      );
+      let randomSendingRuleIds =
+        await this.weeklyLottery.randomSendingRuleIdsAll();
       expect(randomSendingRuleIds[0]).to.equal(1);
       expect(randomSendingRuleIds[1]).to.equal(2);
       expect(randomSendingRuleIds[2]).to.equal(3);
@@ -117,11 +122,9 @@ describe("TokenTimedRandomSendContract", function () {
       // create after delete
       await this.weeklyLottery.createRandomSendingRule(1 / 0.1, 1);
       randomSendingRuleRatioTotalAmount =
-        await this.weeklyLottery.randomSendingRuleRatioTotalAmount(index);
+        await this.weeklyLottery.randomSendingRuleRatioTotalAmount();
       expect(randomSendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.5);
-      randomSendingRuleIds = await this.weeklyLottery.randomSendingRuleIds(
-        index
-      );
+      randomSendingRuleIds = await this.weeklyLottery.randomSendingRuleIdsAll();
       expect(randomSendingRuleIds[0]).to.equal(1);
       expect(randomSendingRuleIds[1]).to.equal(2);
       expect(randomSendingRuleIds[2]).to.equal(3);
@@ -135,21 +138,21 @@ describe("TokenTimedRandomSendContract", function () {
         this.signers[0].address // owner
       );
       let definitelySendingRuleIds =
-        await this.weeklyLottery.definitelySendingRuleIds(index);
+        await this.weeklyLottery.definitelySendingRuleIdsAll();
       expect(definitelySendingRuleIds.length).to.equal(2);
       expect(definitelySendingRuleIds[0]).to.equal(1);
       expect(definitelySendingRuleIds[1]).to.equal(2);
       let definitelySendingRuleRatioTotalAmount =
-        await this.weeklyLottery.definitelySendingRuleRatioTotalAmount(index);
+        await this.weeklyLottery.definitelySendingRuleRatioTotalAmount();
       expect(definitelySendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.3);
 
       await this.weeklyLottery.deleteDefinitelySendingRule(1);
       definitelySendingRuleIds =
-        await this.weeklyLottery.definitelySendingRuleIds(index);
+        await this.weeklyLottery.definitelySendingRuleIdsAll();
       expect(definitelySendingRuleIds.length).to.equal(1);
       expect(definitelySendingRuleIds[0]).to.equal(1);
       definitelySendingRuleRatioTotalAmount =
-        await this.weeklyLottery.definitelySendingRuleRatioTotalAmount(index);
+        await this.weeklyLottery.definitelySendingRuleRatioTotalAmount();
       expect(definitelySendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.2);
 
       // create after delete
@@ -158,21 +161,79 @@ describe("TokenTimedRandomSendContract", function () {
         this.signers[0].address // owner
       );
       definitelySendingRuleRatioTotalAmount =
-        await this.weeklyLottery.definitelySendingRuleRatioTotalAmount(index);
+        await this.weeklyLottery.definitelySendingRuleRatioTotalAmount();
       expect(definitelySendingRuleRatioTotalAmount / 10 ** 18).to.equal(0.3);
       definitelySendingRuleIds =
-        await this.weeklyLottery.definitelySendingRuleIds(index);
+        await this.weeklyLottery.definitelySendingRuleIdsAll();
       expect(definitelySendingRuleIds[0]).to.equal(1);
       expect(definitelySendingRuleIds[1]).to.equal(2);
       expect(definitelySendingRuleIds.length).to.equal(2);
+    });
+  });
+
+  describe("buyticket when isOnlyOwner = false", function () {
+    const _isOnlyOwner = false;
+
+    beforeEach(async function () {
+      this.lotteryERC20 = await ethers.getContractFactory("LotteryERC20");
+      this.weeklyLottery = await ethers.getContractFactory(
+        "TokenTimedRandomSendContract"
+      );
+      this.signers = await ethers.getSigners();
+
+      this.lotteryERC20 = await this.lotteryERC20.deploy();
+      // mint erc20 token to wallet address
+      await this.signers.forEach(async (user: any) => {
+        this.lotteryERC20.mint(user.address, String(10 ** 20));
+      });
+      this.weeklyLottery = await this.weeklyLottery.deploy(
+        "weeklyLottery",
+        "WLT",
+        this.lotteryERC20.address,
+        sellerCommission,
+        _ticketPrice,
+        _isOnlyOwner,
+        subscriptionId,
+        vrfCoordinator,
+        keyHash
+      );
+
+      // set rule
+      const randomSendingRules = [
+        { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
+        { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
+        { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
+      ];
+      await randomSendingRules.forEach(async (rule) => {
+        await this.weeklyLottery.createRandomSendingRule(
+          rule.raito,
+          rule.sendingCount
+        );
+      });
+
+      await this.weeklyLottery.createDefinitelySendingRule(
+        1 / 0.2, // 20%
+        this.signers[0].address // owner
+      );
+
+      await this.weeklyLottery.complatedRuleSetting();
+      await this.weeklyLottery.statusToAccepting(
+        String(Math.floor(Date.now() / 1000) + 3600)
+      );
+
+      await printData(
+        this.signers,
+        this.lotteryERC20,
+        this.weeklyLottery,
+        "beforeEach"
+      );
     });
 
     it("should have correct init value", async function () {
       const erc20 = await this.weeklyLottery.erc20();
       const name = await this.weeklyLottery.name();
       const symbol = await this.weeklyLottery.symbol();
-      const cycleTimestamp = await this.weeklyLottery.cycleTimestamp();
-      const ticketPrice = await this.weeklyLottery.ticketPrice(index);
+      const ticketPrice = await this.weeklyLottery.ticketPrice();
       const ticketLastId = await this.weeklyLottery.ticketLastId(index);
       const ticketLastNumber = await this.weeklyLottery.ticketLastNumber(
         index,
@@ -192,7 +253,6 @@ describe("TokenTimedRandomSendContract", function () {
       expect(name).to.equal("weeklyLottery");
       expect(symbol).to.equal("WLT");
       expect(ticketPrice).to.equal(_ticketPrice);
-      expect(cycleTimestamp).to.equal(_cycleTimestamp.toString());
       expect(this.lotteryERC20.address).to.equal(erc20);
       expect(ticketLastId).to.equal("0");
       expect(ticketLastNumber).to.equal("0");
@@ -204,17 +264,18 @@ describe("TokenTimedRandomSendContract", function () {
 
     it("Owner should buy ticket", async function () {
       const user = this.signers[0];
-      const ticketPrice = await this.weeklyLottery.ticketPrice(index);
+      const ticketPrice = await this.weeklyLottery.ticketPrice();
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
+      const seller = this.signers[10];
       await approveAndBuyTicket(
         this.lotteryERC20,
         this.weeklyLottery,
         user,
         tokenAmount,
         _ticketCount,
-        this.signers[10]
+        seller
       );
 
       // ticketLastIdが追加されていること
@@ -261,14 +322,27 @@ describe("TokenTimedRandomSendContract", function () {
       const buyerAmount = await this.lotteryERC20.balanceOf(user.address);
       expect(buyerAmount).to.equal("70000000000000000000");
 
-      // sellerがtokenをもらっていること
-      const sellerAmount = await this.lotteryERC20.balanceOf(
-        this.signers[10].address
+      // sellerの登録されていること
+      const sellers = await this.weeklyLottery.sellers(index);
+      expect(sellers[0]).to.equal(seller.address);
+      let isSeller = await this.weeklyLottery.isSeller(index, seller.address);
+      expect(isSeller).to.equal(true);
+      isSeller = await this.weeklyLottery.isSeller(index, user.address);
+      expect(isSeller).to.equal(false);
+      let tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+        index,
+        seller.address
       );
-      expect(sellerAmount).to.equal("100300000000000000000");
+      expect(tokenAmountToSeller).to.equal("300000000000000000");
+      tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+        index,
+        user.address
+      );
+      expect(tokenAmountToSeller).to.equal(0);
 
+      // totalSupply
       const totalSupply = await this.weeklyLottery.totalSupply();
-      expect(totalSupply).to.equal("29700000000000000000");
+      expect(totalSupply).to.equal("30000000000000000000");
 
       await printData(
         this.signers,
@@ -279,11 +353,12 @@ describe("TokenTimedRandomSendContract", function () {
     });
 
     it("Two user should buy ticket", async function () {
-      const ticketPrice = await this.weeklyLottery.ticketPrice(index);
+      const ticketPrice = await this.weeklyLottery.ticketPrice();
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
       const user = this.signers[1];
+      const seller = this.signers[10];
       // first
       await approveAndBuyTicket(
         this.lotteryERC20,
@@ -291,7 +366,7 @@ describe("TokenTimedRandomSendContract", function () {
         this.signers[0],
         tokenAmount,
         _ticketCount,
-        this.signers[10]
+        seller
       );
       // second
       await approveAndBuyTicket(
@@ -300,7 +375,7 @@ describe("TokenTimedRandomSendContract", function () {
         this.signers[1],
         tokenAmount,
         _ticketCount,
-        this.signers[10]
+        seller
       );
 
       // ticketLastIdが追加されていること
@@ -350,14 +425,26 @@ describe("TokenTimedRandomSendContract", function () {
       buyerAmount = await this.lotteryERC20.balanceOf(this.signers[1].address);
       expect(buyerAmount).to.equal("70000000000000000000");
 
-      // sellerがtokenをもらっていること
-      const sellerAmount = await this.lotteryERC20.balanceOf(
-        this.signers[10].address
+      // sellerの登録されていること
+      const sellers = await this.weeklyLottery.sellers(index);
+      expect(sellers[0]).to.equal(seller.address);
+      let isSeller = await this.weeklyLottery.isSeller(index, seller.address);
+      expect(isSeller).to.equal(true);
+      isSeller = await this.weeklyLottery.isSeller(index, user.address);
+      expect(isSeller).to.equal(false);
+      let tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+        index,
+        seller.address
       );
-      expect(sellerAmount).to.equal("100600000000000000000");
+      expect(tokenAmountToSeller).to.equal("600000000000000000");
+      tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+        index,
+        user.address
+      );
+      expect(tokenAmountToSeller).to.equal(0);
 
       const totalSupply = await this.weeklyLottery.totalSupply();
-      expect(totalSupply).to.equal("59400000000000000000");
+      expect(totalSupply).to.equal("60000000000000000000");
 
       await printData(
         this.signers,
@@ -368,11 +455,12 @@ describe("TokenTimedRandomSendContract", function () {
     });
 
     it("Three user should buy ticket", async function () {
-      const ticketPrice = await this.weeklyLottery.ticketPrice(index);
+      const ticketPrice = await this.weeklyLottery.ticketPrice();
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
       const user = this.signers[2];
+      const seller = this.signers[10];
       // first
       await approveAndBuyTicket(
         this.lotteryERC20,
@@ -380,7 +468,7 @@ describe("TokenTimedRandomSendContract", function () {
         this.signers[0],
         tokenAmount,
         _ticketCount,
-        this.signers[10]
+        seller
       );
       // second
       await approveAndBuyTicket(
@@ -389,7 +477,7 @@ describe("TokenTimedRandomSendContract", function () {
         this.signers[1],
         tokenAmount,
         _ticketCount,
-        this.signers[10]
+        seller
       );
       // third
       await approveAndBuyTicket(
@@ -398,7 +486,7 @@ describe("TokenTimedRandomSendContract", function () {
         this.signers[2],
         tokenAmount,
         _ticketCount,
-        this.signers[10]
+        seller
       );
 
       // ticketLastIdが追加されていること
@@ -453,14 +541,26 @@ describe("TokenTimedRandomSendContract", function () {
       buyerAmount = await this.lotteryERC20.balanceOf(this.signers[0].address);
       expect(buyerAmount).to.equal("70000000000000000000");
 
-      // sellerがtokenをもらっていること
-      const sellerAmount = await this.lotteryERC20.balanceOf(
-        this.signers[10].address
+      // sellerの登録されていること
+      const sellers = await this.weeklyLottery.sellers(index);
+      expect(sellers[0]).to.equal(seller.address);
+      let isSeller = await this.weeklyLottery.isSeller(index, seller.address);
+      expect(isSeller).to.equal(true);
+      isSeller = await this.weeklyLottery.isSeller(index, user.address);
+      expect(isSeller).to.equal(false);
+      let tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+        index,
+        seller.address
       );
-      expect(sellerAmount).to.equal("100900000000000000000");
+      expect(tokenAmountToSeller).to.equal("900000000000000000");
+      tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+        index,
+        user.address
+      );
+      expect(tokenAmountToSeller).to.equal(0);
 
       const totalSupply = await this.weeklyLottery.totalSupply();
-      expect(totalSupply).to.equal("89100000000000000000");
+      expect(totalSupply).to.equal("90000000000000000000");
 
       await printData(
         this.signers,
@@ -471,7 +571,7 @@ describe("TokenTimedRandomSendContract", function () {
     });
 
     it("The same user buys ticket again.", async function () {
-      const ticketPrice = await this.weeklyLottery.ticketPrice(index);
+      const ticketPrice = await this.weeklyLottery.ticketPrice();
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
@@ -585,15 +685,15 @@ describe("TokenTimedRandomSendContract", function () {
       const sellerAmount = await this.lotteryERC20.balanceOf(
         this.signers[10].address
       );
-      expect(sellerAmount).to.equal("101200000000000000000");
+      expect(sellerAmount).to.equal("100000000000000000000");
 
       const totalSupply = await this.weeklyLottery.totalSupply();
-      expect(totalSupply).to.equal("118800000000000000000");
+      expect(totalSupply).to.equal("120000000000000000000");
     });
 
     it("Owner should send ticket", async function () {
       const user = this.signers[0];
-      const ticketPrice = await this.weeklyLottery.ticketPrice(index);
+      const ticketPrice = await this.weeklyLottery.ticketPrice();
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
@@ -650,12 +750,12 @@ describe("TokenTimedRandomSendContract", function () {
       expect(participantCount).to.equal("2");
 
       const totalSupply = await this.weeklyLottery.totalSupply();
-      expect(totalSupply).to.equal("29700000000000000000");
+      expect(totalSupply).to.equal("30000000000000000000");
     });
 
     it("Non-Owner can not send ticket", async function () {
       const user = this.signers[1];
-      const ticketPrice = await this.weeklyLottery.ticketPrice(index);
+      const ticketPrice = await this.weeklyLottery.ticketPrice();
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
@@ -673,11 +773,11 @@ describe("TokenTimedRandomSendContract", function () {
       ).to.be.revertedWith("Ownable: caller is not the owner");
 
       const totalSupply = await this.weeklyLottery.totalSupply();
-      expect(totalSupply).to.equal("29700000000000000000");
+      expect(totalSupply).to.equal("30000000000000000000");
     });
   });
 
-  describe("when isOnlyOwner = true", function () {
+  describe("send ticket & buy ticket when isOnlyOwner = true", function () {
     const _isOnlyOwner = true;
 
     beforeEach(async function () {
@@ -696,7 +796,6 @@ describe("TokenTimedRandomSendContract", function () {
       this.weeklyLottery = await this.weeklyLottery.deploy(
         "weeklyLottery",
         "WLT",
-        _cycleTimestamp,
         this.lotteryERC20.address,
         sellerCommission,
         _ticketPrice,
@@ -705,7 +804,28 @@ describe("TokenTimedRandomSendContract", function () {
         vrfCoordinator,
         keyHash
       );
-      await this.weeklyLottery.startAccepting();
+      // set rule
+      const randomSendingRules = [
+        { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
+        { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
+        { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
+      ];
+      randomSendingRules.forEach(async (rule) => {
+        await this.weeklyLottery.createRandomSendingRule(
+          rule.raito,
+          rule.sendingCount
+        );
+      });
+
+      await this.weeklyLottery.createDefinitelySendingRule(
+        1 / 0.2, // 20%
+        this.signers[0].address // owner
+      );
+
+      await this.weeklyLottery.complatedRuleSetting();
+      await this.weeklyLottery.statusToAccepting(
+        Math.floor(Date.now() / 1000) + 500
+      );
 
       await printData(
         this.signers,
@@ -719,8 +839,7 @@ describe("TokenTimedRandomSendContract", function () {
       const erc20 = await this.weeklyLottery.erc20();
       const name = await this.weeklyLottery.name();
       const symbol = await this.weeklyLottery.symbol();
-      const cycleTimestamp = await this.weeklyLottery.cycleTimestamp();
-      const ticketPrice = await this.weeklyLottery.ticketPrice(index);
+      const ticketPrice = await this.weeklyLottery.ticketPrice();
       const ticketLastId = await this.weeklyLottery.ticketLastId(index);
       const ticketLastNumber = await this.weeklyLottery.ticketLastNumber(
         index,
@@ -740,7 +859,6 @@ describe("TokenTimedRandomSendContract", function () {
       expect(name).to.equal("weeklyLottery");
       expect(symbol).to.equal("WLT");
       expect(ticketPrice).to.equal(_ticketPrice);
-      expect(cycleTimestamp).to.equal(_cycleTimestamp.toString());
       expect(this.lotteryERC20.address).to.equal(erc20);
       expect(ticketLastId).to.equal("0");
       expect(ticketLastNumber).to.equal("0");
@@ -752,7 +870,7 @@ describe("TokenTimedRandomSendContract", function () {
 
     it("Owner user can buy ticket", async function () {
       const user = this.signers[0];
-      const ticketPrice = await this.weeklyLottery.ticketPrice(index);
+      const ticketPrice = await this.weeklyLottery.ticketPrice();
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
@@ -807,7 +925,7 @@ describe("TokenTimedRandomSendContract", function () {
     });
 
     it("Non-Owner can not buy ticket", async function () {
-      const ticketPrice = await this.weeklyLottery.ticketPrice(index);
+      const ticketPrice = await this.weeklyLottery.ticketPrice();
       const _ticketCount = 3;
       const tokenAmount = String(ticketPrice * _ticketCount);
 
