@@ -27,28 +27,34 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
         DEFINITELY_SEND
     }
     TokenSengingStatus public tokenSengingStatus;
+    uint constant MAX_RULE_COUNT = 20;
 
     // constant
     string public name;
     string public symbol;
     uint public closeTimestamp;
     IERC20 public erc20; // erc20 token used for lottery
-    uint public sellerCommission;
     bool public isOnlyOwner;
     uint public immutable baseTokenAmount = 10 ** 18;
+
+    // sellerCommission
+    uint public sellerCommissionRatio;
+    uint public sellerCommissionRatioTotalAmount;
     // RandomSendingRule
-    uint[] public randomSendingRuleIds;
+    uint public lastRandomSendingRuleId;  // TODO: 上限数を制限する必要がある
     mapping(uint => uint) public randomSendingRuleRatio;
     mapping(uint => uint) public randomSendingRuleSendingCount;
     uint public randomSendingRuleRatioTotalAmount;
-    uint public currentRandomSendingRuleIndex;
-    uint public currentRandomSendingRuleSendingCount = 1;
+    uint public currentRandomSendingRuleId;
+    uint public currentRandomSendingRuleSendingCount;
     /// definitelySendingRule
-    uint[] public definitelySendingRuleIds;
+    uint public lastDefinitelySendingRuleId;
     mapping(uint => address) public definitelySendingRuleAddress;
     mapping(uint => uint) private definitelySendingRuleRatio;
     uint public definitelySendingRuleRatioTotalAmount;
     mapping(uint => uint) public totalSupplyByIndex;
+    uint public currentDefinitelySendingId;
+
     // event count
     uint public index = 1;
 
@@ -74,7 +80,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     mapping(uint => uint) private _ticketLastId;
     mapping(uint => mapping(uint => uint)) private _ticketCount;
     mapping(uint => mapping(uint => uint)) private _ticketLastNumber;
-    mapping(uint => mapping(address => uint[])) private _ticketIds;
+    mapping(uint => mapping(address => uint[])) private _ticketIds; // TODO: 上限数を制限する必要がある
     mapping(uint => mapping(uint => address)) private _ticketHolder;
     mapping(uint => mapping(uint => uint)) private _ticketReceivedAt;
 
@@ -114,7 +120,6 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
         string memory _name,
         string memory _symbol,
         IERC20 _erc20,
-        uint _sellerCommission,
         uint _ticketPrice,
         bool _isOnlyOwner,
         uint64 _subscriptionId,
@@ -125,7 +130,6 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
         name = _name;
         symbol = _symbol;
         erc20 = _erc20;
-        sellerCommission = _sellerCommission;
         ticketPrice = _ticketPrice;
         isOnlyOwner = _isOnlyOwner;
 
@@ -166,11 +170,13 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
             _isSeller[index][seller] = true;
             _sellers[index].push(seller);
         }
-        _tokenAmountToSeller[index][seller] = _tokenAmountToSeller[index][seller] + tokenAmount.div(sellerCommission);
+        if (sellerCommissionRatio > 0) {
+          _tokenAmountToSeller[index][seller] = _tokenAmountToSeller[index][seller] + tokenAmount.div(sellerCommissionRatio);
+        }
     }
 
     function sendTicket(uint ticketIdsIndex, address to) public onlyByStatus(Status.ACCEPTING) onlyOwner {
-        uint ticketId = ticketIdFromTicketIds(ticketIdsIndex);
+        uint ticketId = ticketIdByTicketIds(ticketIdsIndex);
 
         // remove
         _ticketIds[index][msg.sender][ticketIdsIndex] = _ticketIds[index][msg.sender][_ticketIds[index][msg.sender].length - 1];
@@ -199,28 +205,20 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     * @param _ratio random sending rule ratio
     * @param _sendingCount random sending rule sending count
     */
-    // TODO: ratioとcountが0より大きいことをvalidationかける
-    function createRandomSendingRule(uint _ratio, uint _sendingCount) public onlyByStatus(Status.RULE_SETTING) onlyOwner canCreateSendingRule(_ratio, _sendingCount) {
-        uint id = randomSendingRuleIds.length + 1;
-        randomSendingRuleIds.push(id);
-        randomSendingRuleRatio[id] = _ratio;
-        randomSendingRuleSendingCount[id] = _sendingCount;
+    function createRandomSendingRule(uint _ratio, uint _sendingCount) public
+        onlyByStatus(Status.RULE_SETTING)
+        onlyOwner
+        requireLessThanMaxRuleCount(lastRandomSendingRuleId)
+        noZero(_ratio)
+        noZero(_sendingCount)
+        canCreateSendingRule(_ratio, _sendingCount)
+    {
+        lastRandomSendingRuleId++;
+        
+        randomSendingRuleRatio[lastRandomSendingRuleId] = _ratio;
+        randomSendingRuleSendingCount[lastRandomSendingRuleId] = _sendingCount;
 
         randomSendingRuleRatioTotalAmount = randomSendingRuleRatioTotalAmount + randomSendingRatioAmount(_ratio, _sendingCount);
-    }
-
-    /**
-    * @notice delete random sending rule
-    * @param randomSendingRuleIndex random sending rule index
-    */
-    function deleteRandomSendingRule(uint randomSendingRuleIndex) public onlyByStatus(Status.RULE_SETTING) onlyOwner {
-        uint id = randomSendingRuleIds[randomSendingRuleIndex];
-        require(randomSendingRuleIds[randomSendingRuleIndex] != 0, "deleteRandomSendingRule: randomSendingRuleId not found");
-        randomSendingRuleRatioTotalAmount = randomSendingRuleRatioTotalAmount - randomSendingRatioAmount(randomSendingRuleRatio[id], randomSendingRuleSendingCount[id]);
-        randomSendingRuleIds[randomSendingRuleIndex] = randomSendingRuleIds[randomSendingRuleIds.length - 1];
-        randomSendingRuleIds.pop();
-        delete randomSendingRuleRatio[id];
-        delete randomSendingRuleSendingCount[id];
     }
 
     /**
@@ -228,31 +226,38 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     * @param _ratio definitely sending rule ratio
     * @param _destinationAddress destination address
     */
-    // TODO: チケット購入の受付が開始されたらルールは変更できないようにする
     function createDefinitelySendingRule(
         uint _ratio,
         address _destinationAddress
-    ) public onlyByStatus(Status.RULE_SETTING) onlyOwner canCreateSendingRule(_ratio, 1) {
-        uint id = lastDefinitelySendingRuleIds() + 1;
-        definitelySendingRuleIds.push(id);
-        definitelySendingRuleAddress[id] = _destinationAddress;
-        definitelySendingRuleRatio[id] = _ratio;
+    ) public
+        onlyByStatus(Status.RULE_SETTING)
+        onlyOwner
+        requireLessThanMaxRuleCount(lastDefinitelySendingRuleId)
+        noZero(_ratio)
+        canCreateSendingRule(_ratio, 1) 
+    {
+        lastDefinitelySendingRuleId++;
+
+        definitelySendingRuleAddress[lastDefinitelySendingRuleId] = _destinationAddress;
+        definitelySendingRuleRatio[lastDefinitelySendingRuleId] = _ratio;
 
         definitelySendingRuleRatioTotalAmount = definitelySendingRuleRatioTotalAmount + ratioAmount(_ratio);
     }
 
-    /**
-    * @notice delete definitely sending rule
-    * @param definitelySendingRuleIndex definitely sending rule index
-    */
-    function deleteDefinitelySendingRule(uint definitelySendingRuleIndex) public onlyByStatus(Status.RULE_SETTING) onlyOwner {
-        uint id = definitelySendingRuleIds[definitelySendingRuleIndex];
-        require(definitelySendingRuleIds[definitelySendingRuleIndex] != 0, "deleteDefinitelySendingRule: definitelySendingRuleId not found");
-        definitelySendingRuleIds[definitelySendingRuleIndex] = definitelySendingRuleIds[definitelySendingRuleIds.length - 1];
-        definitelySendingRuleIds.pop();
-        definitelySendingRuleRatioTotalAmount = definitelySendingRuleRatioTotalAmount - ratioAmount(definitelySendingRuleRatio[id]);
-        delete definitelySendingRuleAddress[id];
-        delete definitelySendingRuleRatio[id];
+    function setSellerCommissionRatio(uint _sellerCommissionRatio) public onlyByStatus(Status.RULE_SETTING) onlyOwner noZero(_sellerCommissionRatio) canCreateSendingRule(_sellerCommissionRatio, 1) {
+        sellerCommissionRatio = _sellerCommissionRatio;
+        sellerCommissionRatioTotalAmount = ratioAmount(sellerCommissionRatio);
+    }
+
+    modifier noZero(uint number) {
+        require(number > 0);
+        _;
+
+    }
+
+    modifier requireLessThanMaxRuleCount(uint id) {
+        require(id < MAX_RULE_COUNT);
+        _;
     }
 
     modifier onlyOwnerWhenIsOnlyOwner {
@@ -273,7 +278,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     }
 
     modifier requireRandomSendingRules() {
-        require(randomSendingRuleIds.length > 0, "require random sending rules");
+        require(lastRandomSendingRuleId > 0, "require random sending rules");
         _;
     }
 
@@ -288,7 +293,8 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     * @param _sendingCount SendingRule sending count
     */
     modifier canCreateSendingRule(uint _ratio, uint _sendingCount) {
-        uint totalAmount = randomSendingRuleRatioTotalAmount + definitelySendingRuleRatioTotalAmount + (ratioAmount(_ratio) * _sendingCount);
+        
+        uint totalAmount = randomSendingRuleRatioTotalAmount + definitelySendingRuleRatioTotalAmount + sellerCommissionRatioTotalAmount + (ratioAmount(_ratio) * _sendingCount);
         require(
             totalAmount < baseTokenAmount, 
             "TimedRandomSendContract: Only less than 100%"
@@ -296,15 +302,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
         _;
     }
 
-    function randomSendingRuleIdsAll() public view returns(uint[] memory) {
-        return randomSendingRuleIds;
-    }
-
-    function definitelySendingRuleIdsAll() public view returns(uint[] memory) {
-        return definitelySendingRuleIds;
-    }
-
-    function ticketIdFromTicketIds(uint _ticketIdsIndex) internal view returns(uint) {
+    function ticketIdByTicketIds(uint _ticketIdsIndex) internal view returns(uint) {
         return _ticketIds[index][msg.sender][_ticketIdsIndex];
     }
 
@@ -341,13 +339,6 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
         return _ticketHolder[_index][_ticketId];
     }
 
-    function lastDefinitelySendingRuleIds() internal view returns(uint) {
-        if (definitelySendingRuleIds.length == 0) {
-            return 0;
-        }
-        return definitelySendingRuleIds[definitelySendingRuleIds.length - 1];
-    }
-
     function sellers(uint _index) public view returns(address[] memory) {
         return _sellers[_index];
     }
@@ -376,6 +367,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     }
 
     // change status ------>
+    // オーナーでなくても、スタートできるようにしたい。
     function statusToAccepting(uint _closeTimestamp) public onlyOwner onlyByStatus(Status.DONE) {
         require(_closeTimestamp > block.timestamp, "closeTimestamp require after block.timestamp");
         closeTimestamp = _closeTimestamp;
@@ -395,6 +387,9 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     function statusToTokenSending() private {
         tokenSengingStatus = TokenSengingStatus.SEND_TO_SELLER;
         status = Status.TOKEN_SENDING;
+        currentRandomSendingRuleId = 1;
+        currentRandomSendingRuleSendingCount = 1;
+        currentDefinitelySendingId = 1;
     }
 
     function statusToDone() public onlyByStatus(Status.TOKEN_SENDING) {
@@ -424,18 +419,27 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
         tokenSengingStatus = TokenSengingStatus.RANDOM_SEND;
     }
 
-    function convertRandomValueToTicketId(uint number) private view returns (uint) {
+    function convertedNumber(uint number) private view returns (uint) {
         return uint(keccak256(abi.encode(number))) % _ticketLastNumber[index][_ticketLastId[index]];
     }
 
-    function randomSend(uint _ticketId) public onlyByStatus(Status.TOKEN_SENDING) onlyByTokenSendingStatus(TokenSengingStatus.RANDOM_SEND) {
-        uint winnerTicketLastNumber = convertRandomValueToTicketId(currentRandomSendingRuleSendingCount + randomValue[index] + currentRandomSendingRuleIndex);
-        // TODO: winnerTicketLastNumberが0になる可能性があるので、その時の当選者がいなくなってしまう
-        
-        // この間に乱数があれば、当選とみなす
-        require(_ticketLastNumber[index][_ticketId - 1] <= winnerTicketLastNumber && (_ticketLastNumber[index][_ticketId - 1] + _ticketCount[index][_ticketId]) >= winnerTicketLastNumber);
+    function convertRandomValueToWinnerTicketNumber() public view returns (uint) {
+        uint uniquRandamValue = randomValue[index] + convertedNumber(currentRandomSendingRuleId) + convertedNumber(currentRandomSendingRuleSendingCount);
+        uniquRandamValue = convertedNumber(uniquRandamValue);
+        if (uniquRandamValue == 0) {
+            return _ticketLastNumber[index][_ticketLastId[index]];
+        } else {
+            return uniquRandamValue;
+        }
+    }
 
-        uint tokenAmount = totalSupplyByIndex[index].div(randomSendingRuleRatio[randomSendingRuleIds[currentRandomSendingRuleIndex]]);
+    function randomSend(uint _ticketId) public onlyByStatus(Status.TOKEN_SENDING) onlyByTokenSendingStatus(TokenSengingStatus.RANDOM_SEND) {
+        require(_ticketLastId[index] <= _ticketId);
+        require(_ticketId > 0);
+        uint winnerTicketNumber = convertRandomValueToWinnerTicketNumber();
+        require(_ticketLastNumber[index][_ticketId - 1] < winnerTicketNumber && (_ticketLastNumber[index][_ticketId - 1] + _ticketCount[index][_ticketId]) >= winnerTicketNumber);
+
+        uint tokenAmount = totalSupplyByIndex[index].div(randomSendingRuleRatio[currentRandomSendingRuleId]);
         erc20.transfer(_ticketHolder[index][_ticketId], tokenAmount);
         
         nextToRandomSend();
@@ -443,21 +447,37 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
 
     function nextToRandomSend() private {
         // sending_countの人数分の送金が完了したら、次のrandon sending ruleにいく、
-        if (currentRandomSendingRuleSendingCount == randomSendingRuleSendingCount[currentRandomSendingRuleIndex]) {
-            if (currentRandomSendingRuleIndex == randomSendingRuleIds.length) {
+        if (currentRandomSendingRuleSendingCount == randomSendingRuleSendingCount[currentRandomSendingRuleId]) {
+            if (currentRandomSendingRuleId == lastRandomSendingRuleId) {
                 // randam sendは終了
                 tokenSengingStatus = TokenSengingStatus.DEFINITELY_SEND;
-                currentRandomSendingRuleIndex = 0;
-                currentRandomSendingRuleSendingCount = 1;
             } else {
-                 // currentRandomSendingRuleIndexをプラス１する
-                currentRandomSendingRuleIndex++;
+                 // currentRandomSendingRuleIdをプラス１する
+                currentRandomSendingRuleId++;
                 currentRandomSendingRuleSendingCount = 1;
             }
         } else {
             // 次のsending countへ移る
             // 引数で_ticketIdをとるが、スマートコントラクトで承認する処理は必要になる, スマートコントラクトの処理の負荷を下げるためにこの処理をする
             currentRandomSendingRuleSendingCount++;
+        }
+    }
+
+    function definitelySend() public onlyByStatus(Status.TOKEN_SENDING) onlyByTokenSendingStatus(TokenSengingStatus.DEFINITELY_SEND) {
+        // 送金量の計算
+        uint tokenAmount = totalSupplyByIndex[index].div(definitelySendingRuleRatio[currentDefinitelySendingId]);
+        // 送金
+        erc20.transfer(definitelySendingRuleAddress[currentDefinitelySendingId], tokenAmount);
+
+        nextToDefinitelySend();
+    }
+
+    function nextToDefinitelySend() private {
+        if (lastDefinitelySendingRuleId == currentDefinitelySendingId) {
+            // 終了
+            statusToDone();
+        } else {
+            currentDefinitelySendingId++;
         }
     }
 }
