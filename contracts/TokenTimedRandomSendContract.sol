@@ -28,6 +28,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     }
     TokenSengingStatus public tokenSengingStatus;
     uint constant MAX_RULE_COUNT = 20;
+    uint constant MAX_SENDING_COUNT = 1000;
 
     // constant
     string public name;
@@ -212,6 +213,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
         noZero(_ratio)
         noZero(_sendingCount)
         canCreateSendingRule(_ratio, _sendingCount)
+        requireUnderMaxSendingCount(_sendingCount)
     {
         lastRandomSendingRuleId++;
         
@@ -284,6 +286,11 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
 
     modifier requireRandomValue() {
         require(randomValue[index] != 0);
+        _;
+    }
+
+    modifier requireUnderMaxSendingCount(uint sendingCount) {
+        require(MAX_SENDING_COUNT >= sendingCount);
         _;
     }
 
@@ -376,12 +383,16 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
 
     // TODO: chainlink vrfからのデータの取得を失敗する可能性があることを考慮する
     // リスク回避の方法としては、長時間vrfからの応答がなければ、受け取った費用を戻すようにする
-    // しかし、費用を戻すのであれば、sellercommitionの送金はbuyticket時にしない方が良い
     function statusToRandomValueGetting() public onlyByStatus(Status.ACCEPTING) {
         require(closeTimestamp < block.timestamp, "after closeTimestamp");
         status = Status.RANDOM_VALUE_GETTING;
         totalSupplyByIndex[index] = totalSupply();
-        requestRandomWords();
+        // production
+        // requestRandomWords();
+
+        // dev
+        randomValue[index] = 10000;
+        statusToTokenSending();
     }
 
     function statusToTokenSending() private {
@@ -410,13 +421,12 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
         address _seller = _sellers[index][sendToSellerIndex];
         uint tokenAmount = _tokenAmountToSeller[index][_seller];
         erc20.transfer(_seller, tokenAmount);
-        sendToSellerIndex++;
-    }
-
-    function tokenSengingStatusToRandomSend() public onlyByStatus(Status.TOKEN_SENDING) onlyByTokenSendingStatus(TokenSengingStatus.SEND_TO_SELLER) {
-        require(_sellers[index][sendToSellerIndex] == address(0)); // 全ての送金が完了していること
-        sendToSellerIndex = 0;
-        tokenSengingStatus = TokenSengingStatus.RANDOM_SEND;
+        if ((_sellers[index].length - 1) == sendToSellerIndex) {
+            sendToSellerIndex = 0;
+            tokenSengingStatus = TokenSengingStatus.RANDOM_SEND;
+        } else {
+            sendToSellerIndex++;
+        }
     }
 
     function convertedNumber(uint number) private view returns (uint) {
@@ -424,7 +434,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     }
 
     function convertRandomValueToWinnerTicketNumber() public view returns (uint) {
-        uint uniquRandamValue = randomValue[index] + convertedNumber(currentRandomSendingRuleId) + convertedNumber(currentRandomSendingRuleSendingCount);
+        uint uniquRandamValue = randomValue[index] + convertedNumber(currentRandomSendingRuleId * MAX_SENDING_COUNT) + convertedNumber(currentRandomSendingRuleSendingCount);
         uniquRandamValue = convertedNumber(uniquRandamValue);
         if (uniquRandamValue == 0) {
             return _ticketLastNumber[index][_ticketLastId[index]];
@@ -434,8 +444,8 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     }
 
     function randomSend(uint _ticketId) public onlyByStatus(Status.TOKEN_SENDING) onlyByTokenSendingStatus(TokenSengingStatus.RANDOM_SEND) {
-        require(_ticketLastId[index] <= _ticketId);
-        require(_ticketId > 0);
+        require(_ticketLastId[index] >= _ticketId);
+        require(_ticketId > 0, "require over then 0");
         uint winnerTicketNumber = convertRandomValueToWinnerTicketNumber();
         require(_ticketLastNumber[index][_ticketId - 1] < winnerTicketNumber && (_ticketLastNumber[index][_ticketId - 1] + _ticketCount[index][_ticketId]) >= winnerTicketNumber);
 
