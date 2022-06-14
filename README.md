@@ -36,12 +36,12 @@ npx hardhat test
 
 ## local net deploy
 ```
-npx hardhat run --network localhost scripts/hardhat/deploy.ts
+npx hardhat run --network localhost scripts/TokenTimedRandomSendContract/deploy.ts
 ```
 
 ## test net deploy
 ```
-npx hardhat run --network ropsten scripts/deploy.ts
+npx hardhat run --network rinkeby scripts/TokenTimedRandomSendContract/deploy.ts
 ```
 
 # White Paper

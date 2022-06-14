@@ -26,13 +26,47 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 const config: HardhatUserConfig = {
   solidity: "0.8.14",
   networks: {
-    ropsten: {
-      url: process.env.ROPSTEN_URL || "",
+    // ethereum
+    ethereum: {
+      url: "https://eth-mainnet.alchemyapi.io/v2/jN82KXq-76ayJeTViWfNMiYIavKtKc7Y",
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
     rinkeby: {
-      url: "https://rinkeby.infura.io/v3/9132a69c7c20454381e274ce4533f73d",
+      url: "https://eth-rinkeby.alchemyapi.io/v2/pNjLSVJbB2KD9usepT_frsc8PqN42zmk",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    // polygon
+    polygon: {
+      url: "https://polygon-mainnet.g.alchemy.com/v2/CAnNsfz_V_ZDq5vuBWW8_GIAjXKHIJ0_",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    mumbai: {
+      url: "https://polygon-mumbai.g.alchemy.com/v2/U72JPoKDH5RmMv9HdaMra3AL9a3vrZ0_",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    // binance
+    binance: {
+      url: "https://bsc-dataseed.binance.org/",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    binanceSmartCahinTestnet: {
+      url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    // avalanche
+    avalanche: {
+      url: "https://api.avax.network/ext/bc/C/rpc",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    avalancheFuji: {
+      url: "https://api.avax-test.network/ext/bc/C/rpc",
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },

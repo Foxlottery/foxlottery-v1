@@ -6,9 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title LotteryERC20
- * @author Peter Takahashi(CEO of LotteryERC20)
+ * @author Seiya Takahashi (github: https://github.com/PeterTakahashi)
  */
-
 contract LotteryERC20 is ERC20("LotteryERC20", "LE2"), Ownable {
     function mint(address _to, uint256 _amount) public onlyOwner {
         _mint(_to, _amount);
