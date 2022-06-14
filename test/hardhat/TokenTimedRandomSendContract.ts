@@ -4,6 +4,11 @@ import { ethers } from "hardhat";
 const _ticketPrice = String(10 ** 19);
 const index = 1;
 const sellerCommissionRatio = 100;
+const cycle = 3600;
+const closeTimestamp =
+  Math.floor(Date.now() / 1000) +
+  (3600 - (Math.floor(Date.now() / 1000) % 3600)) +
+  7200;
 const subscriptionId = 1;
 const vrfCoordinator = "0x6168499c0cFfCaCD319c818142124B7A15E857ab";
 const keyHash =
@@ -21,11 +26,6 @@ const tokenSengingStatuses = [
   "RANDOM_SEND",
   "DEFINITELY_SEND",
 ];
-
-async function increaseTime(duration: any) {
-  const newTimestampInSeconds = Math.floor(Date.now() / 1000) + duration;
-  await ethers.provider.send("evm_mine", [newTimestampInSeconds]);
-}
 
 async function approveAndBuyTicket(
   lotteryERC20: any,
@@ -66,7 +66,6 @@ async function getTicketId(weeklyLottery: any) {
   if (convertRandomValueToWinnerTicketNumber % 3 !== 0) {
     ticketId++;
   }
-  console.log(ticketId);
   return ticketId;
 }
 
@@ -92,6 +91,8 @@ describe("TokenTimedRandomSendContract", function () {
         this.lotteryERC20.address,
         _ticketPrice,
         _isOnlyOwner,
+        cycle,
+        closeTimestamp,
         subscriptionId,
         vrfCoordinator,
         keyHash
@@ -117,9 +118,7 @@ describe("TokenTimedRandomSendContract", function () {
       );
 
       await this.weeklyLottery.complatedRuleSetting();
-      await this.weeklyLottery.statusToAccepting(
-        String(Math.floor(Date.now() / 1000) + 600)
-      );
+      await this.weeklyLottery.statusToAccepting();
 
       await printData(
         this.signers,
@@ -699,6 +698,8 @@ describe("TokenTimedRandomSendContract", function () {
         this.lotteryERC20.address,
         _ticketPrice,
         _isOnlyOwner,
+        cycle,
+        closeTimestamp,
         subscriptionId,
         vrfCoordinator,
         keyHash
@@ -724,9 +725,7 @@ describe("TokenTimedRandomSendContract", function () {
       );
 
       await this.weeklyLottery.complatedRuleSetting();
-      await this.weeklyLottery.statusToAccepting(
-        Math.floor(Date.now() / 1000) + 500
-      );
+      await this.weeklyLottery.statusToAccepting();
 
       await printData(
         this.signers,
@@ -879,208 +878,217 @@ describe("TokenTimedRandomSendContract", function () {
     });
   });
 
-  describe("token sending test", async function () {
-    const _isOnlyOwner = false;
-    beforeEach(async function () {
-      this.lotteryERC20 = await ethers.getContractFactory("LotteryERC20");
-      this.weeklyLottery = await ethers.getContractFactory(
-        "TokenTimedRandomSendContract"
-      );
-      this.signers = await ethers.getSigners();
+  // describe("token sending test", async function () {
+  //   const _isOnlyOwner = false;
+  //   beforeEach(async function () {
+  //     this.lotteryERC20 = await ethers.getContractFactory("LotteryERC20");
+  //     this.weeklyLottery = await ethers.getContractFactory(
+  //       "TokenTimedRandomSendContract"
+  //     );
+  //     this.signers = await ethers.getSigners();
 
-      this.lotteryERC20 = await this.lotteryERC20.deploy();
-      // mint erc20 token to wallet address
-      await this.signers.forEach(async (user: any) => {
-        this.lotteryERC20.mint(user.address, String(10 ** 20));
-      });
-      this.weeklyLottery = await this.weeklyLottery.deploy(
-        "weeklyLottery",
-        "WLT",
-        this.lotteryERC20.address,
-        _ticketPrice,
-        _isOnlyOwner,
-        subscriptionId,
-        vrfCoordinator,
-        keyHash
-      );
-      await this.weeklyLottery.setSellerCommissionRatio(sellerCommissionRatio);
+  //     this.lotteryERC20 = await this.lotteryERC20.deploy();
+  //     // mint erc20 token to wallet address
+  //     await this.signers.forEach(async (user: any) => {
+  //       this.lotteryERC20.mint(user.address, String(10 ** 20));
+  //     });
+  //     this.weeklyLottery = await this.weeklyLottery.deploy(
+  //       "weeklyLottery",
+  //       "WLT",
+  //       this.lotteryERC20.address,
+  //       _ticketPrice,
+  //       _isOnlyOwner,
+  //       cycle,
+  //       closeTimestamp,
+  //       subscriptionId,
+  //       vrfCoordinator,
+  //       keyHash
+  //     );
+  //     await this.weeklyLottery.setSellerCommissionRatio(sellerCommissionRatio);
 
-      // set rule
-      const randomSendingRules = [
-        { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-        { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-        { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-      ];
-      await randomSendingRules.forEach(async (rule) => {
-        await this.weeklyLottery.createRandomSendingRule(
-          rule.raito,
-          rule.sendingCount
-        );
-      });
+  //     // set rule
+  //     const randomSendingRules = [
+  //       { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
+  //       { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
+  //       { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
+  //     ];
+  //     await randomSendingRules.forEach(async (rule) => {
+  //       await this.weeklyLottery.createRandomSendingRule(
+  //         rule.raito,
+  //         rule.sendingCount
+  //       );
+  //     });
 
-      await this.weeklyLottery.createDefinitelySendingRule(
-        1 / 0.1, // 10%
-        this.signers[0].address // owner
-      );
-      await this.weeklyLottery.createDefinitelySendingRule(
-        1 / 0.1, // 10%
-        this.signers[1].address
-      );
+  //     await this.weeklyLottery.createDefinitelySendingRule(
+  //       1 / 0.1, // 10%
+  //       this.signers[0].address // owner
+  //     );
+  //     await this.weeklyLottery.createDefinitelySendingRule(
+  //       1 / 0.1, // 10%
+  //       this.signers[1].address
+  //     );
 
-      await this.weeklyLottery.complatedRuleSetting();
-      await this.weeklyLottery.statusToAccepting(
-        String(Math.floor(Date.now() / 1000) + 600)
-      );
+  //     await this.weeklyLottery.complatedRuleSetting();
+  //     await this.weeklyLottery.statusToAccepting();
 
-      await printData(
-        this.signers,
-        this.lotteryERC20,
-        this.weeklyLottery,
-        "beforeEach"
-      );
-    });
+  //     await printData(
+  //       this.signers,
+  //       this.lotteryERC20,
+  //       this.weeklyLottery,
+  //       "beforeEach"
+  //     );
+  //   });
 
-    it("send test", async function () {
-      const ticketPrice = await this.weeklyLottery.ticketPrice();
-      const _ticketCount = 3;
-      const tokenAmount = String(ticketPrice * _ticketCount);
+  //   it("send test", async function () {
+  //     const ticketPrice = await this.weeklyLottery.ticketPrice();
+  //     const _ticketCount = 3;
+  //     const tokenAmount = String(ticketPrice * _ticketCount);
 
-      const seller = this.signers[10];
+  //     const seller = this.signers[10];
 
-      for (const user of this.signers) {
-        await approveAndBuyTicket(
-          this.lotteryERC20,
-          this.weeklyLottery,
-          user,
-          tokenAmount,
-          _ticketCount,
-          seller
-        );
-      }
+  //     for (const user of this.signers) {
+  //       await approveAndBuyTicket(
+  //         this.lotteryERC20,
+  //         this.weeklyLottery,
+  //         user,
+  //         tokenAmount,
+  //         _ticketCount,
+  //         seller
+  //       );
+  //     }
 
-      await increaseTime(1000);
-      // finish
-      await this.weeklyLottery.statusToRandomValueGetting();
+  //     let closeTimestamp = Number(await this.weeklyLottery.closeTimestamp());
+  //     await ethers.provider.send("evm_mine", [closeTimestamp]);
+  //     // finish
+  //     await this.weeklyLottery.statusToRandomValueGetting();
 
-      const randomValue = await this.weeklyLottery.randomValue(index);
-      expect(randomValue !== 0).to.equal(true);
+  //     const randomValue = await this.weeklyLottery.randomValue(index);
+  //     expect(randomValue !== 0).to.equal(true);
 
-      const totalSupplyByIndex = await this.weeklyLottery.totalSupplyByIndex(
-        index
-      );
-      expect(totalSupplyByIndex).to.equal("600000000000000000000");
+  //     const totalSupplyByIndex = await this.weeklyLottery.totalSupplyByIndex(
+  //       index
+  //     );
+  //     expect(totalSupplyByIndex).to.equal("600000000000000000000");
 
-      let status = await this.weeklyLottery.status();
-      expect(statuses[status]).to.equal("TOKEN_SENDING");
+  //     let status = await this.weeklyLottery.status();
+  //     expect(statuses[status]).to.equal("TOKEN_SENDING");
 
-      let tokenSengingStatus = await this.weeklyLottery.tokenSengingStatus();
-      expect(tokenSengingStatuses[tokenSengingStatus]).to.equal(
-        "SEND_TO_SELLER"
-      );
+  //     let tokenSengingStatus = await this.weeklyLottery.tokenSengingStatus();
+  //     expect(tokenSengingStatuses[tokenSengingStatus]).to.equal(
+  //       "SEND_TO_SELLER"
+  //     );
 
-      await this.weeklyLottery.sendToSeller();
-      const sendToSellerIndex = await this.weeklyLottery.sendToSellerIndex();
-      expect(sendToSellerIndex).to.equal(0);
+  //     await this.weeklyLottery.sendToSeller();
+  //     const sendToSellerIndex = await this.weeklyLottery.sendToSellerIndex();
+  //     expect(sendToSellerIndex).to.equal(0);
 
-      tokenSengingStatus = await this.weeklyLottery.tokenSengingStatus();
-      expect(tokenSengingStatuses[tokenSengingStatus]).to.equal("RANDOM_SEND");
+  //     tokenSengingStatus = await this.weeklyLottery.tokenSengingStatus();
+  //     expect(tokenSengingStatuses[tokenSengingStatus]).to.equal("RANDOM_SEND");
 
-      let currentRandomSendingRuleSendingCount =
-        await this.weeklyLottery.currentRandomSendingRuleSendingCount();
-      expect(currentRandomSendingRuleSendingCount).to.equal(1);
+  //     let currentRandomSendingRuleSendingCount =
+  //       await this.weeklyLottery.currentRandomSendingRuleSendingCount();
+  //     expect(currentRandomSendingRuleSendingCount).to.equal(1);
 
-      await this.weeklyLottery.randomSend(
-        await getTicketId(this.weeklyLottery)
-      );
+  //     await this.weeklyLottery.randomSend(
+  //       await getTicketId(this.weeklyLottery)
+  //     );
 
-      currentRandomSendingRuleSendingCount =
-        await this.weeklyLottery.currentRandomSendingRuleSendingCount();
-      expect(currentRandomSendingRuleSendingCount).to.equal(2);
+  //     currentRandomSendingRuleSendingCount =
+  //       await this.weeklyLottery.currentRandomSendingRuleSendingCount();
+  //     expect(currentRandomSendingRuleSendingCount).to.equal(2);
 
-      await this.weeklyLottery.randomSend(
-        await getTicketId(this.weeklyLottery)
-      );
+  //     await this.weeklyLottery.randomSend(
+  //       await getTicketId(this.weeklyLottery)
+  //     );
 
-      currentRandomSendingRuleSendingCount =
-        await this.weeklyLottery.currentRandomSendingRuleSendingCount();
-      expect(currentRandomSendingRuleSendingCount).to.equal(3);
+  //     currentRandomSendingRuleSendingCount =
+  //       await this.weeklyLottery.currentRandomSendingRuleSendingCount();
+  //     expect(currentRandomSendingRuleSendingCount).to.equal(3);
 
-      await this.weeklyLottery.randomSend(
-        await getTicketId(this.weeklyLottery)
-      );
-      currentRandomSendingRuleSendingCount =
-        await this.weeklyLottery.currentRandomSendingRuleSendingCount();
-      expect(currentRandomSendingRuleSendingCount).to.equal(4);
+  //     await this.weeklyLottery.randomSend(
+  //       await getTicketId(this.weeklyLottery)
+  //     );
+  //     currentRandomSendingRuleSendingCount =
+  //       await this.weeklyLottery.currentRandomSendingRuleSendingCount();
+  //     expect(currentRandomSendingRuleSendingCount).to.equal(4);
 
-      await this.weeklyLottery.randomSend(
-        await getTicketId(this.weeklyLottery)
-      );
+  //     await this.weeklyLottery.randomSend(
+  //       await getTicketId(this.weeklyLottery)
+  //     );
 
-      currentRandomSendingRuleSendingCount =
-        await this.weeklyLottery.currentRandomSendingRuleSendingCount();
-      expect(currentRandomSendingRuleSendingCount).to.equal(5);
+  //     currentRandomSendingRuleSendingCount =
+  //       await this.weeklyLottery.currentRandomSendingRuleSendingCount();
+  //     expect(currentRandomSendingRuleSendingCount).to.equal(5);
 
-      await this.weeklyLottery.randomSend(
-        await getTicketId(this.weeklyLottery)
-      );
+  //     await this.weeklyLottery.randomSend(
+  //       await getTicketId(this.weeklyLottery)
+  //     );
 
-      let currentRandomSendingRuleId =
-        await this.weeklyLottery.currentRandomSendingRuleId();
-      expect(currentRandomSendingRuleId).to.equal(2);
+  //     let currentRandomSendingRuleId =
+  //       await this.weeklyLottery.currentRandomSendingRuleId();
+  //     expect(currentRandomSendingRuleId).to.equal(2);
 
-      currentRandomSendingRuleSendingCount =
-        await this.weeklyLottery.currentRandomSendingRuleSendingCount();
-      expect(currentRandomSendingRuleSendingCount).to.equal(1);
+  //     currentRandomSendingRuleSendingCount =
+  //       await this.weeklyLottery.currentRandomSendingRuleSendingCount();
+  //     expect(currentRandomSendingRuleSendingCount).to.equal(1);
 
-      await this.weeklyLottery.randomSend(
-        await getTicketId(this.weeklyLottery)
-      );
+  //     await this.weeklyLottery.randomSend(
+  //       await getTicketId(this.weeklyLottery)
+  //     );
 
-      currentRandomSendingRuleSendingCount =
-        await this.weeklyLottery.currentRandomSendingRuleSendingCount();
-      expect(currentRandomSendingRuleSendingCount).to.equal(2);
+  //     currentRandomSendingRuleSendingCount =
+  //       await this.weeklyLottery.currentRandomSendingRuleSendingCount();
+  //     expect(currentRandomSendingRuleSendingCount).to.equal(2);
 
-      await this.weeklyLottery.randomSend(
-        await getTicketId(this.weeklyLottery)
-      );
-      currentRandomSendingRuleId =
-        await this.weeklyLottery.currentRandomSendingRuleId();
-      expect(currentRandomSendingRuleId).to.equal(3);
+  //     await this.weeklyLottery.randomSend(
+  //       await getTicketId(this.weeklyLottery)
+  //     );
+  //     currentRandomSendingRuleId =
+  //       await this.weeklyLottery.currentRandomSendingRuleId();
+  //     expect(currentRandomSendingRuleId).to.equal(3);
 
-      currentRandomSendingRuleSendingCount =
-        await this.weeklyLottery.currentRandomSendingRuleSendingCount();
-      expect(currentRandomSendingRuleSendingCount).to.equal(1);
+  //     currentRandomSendingRuleSendingCount =
+  //       await this.weeklyLottery.currentRandomSendingRuleSendingCount();
+  //     expect(currentRandomSendingRuleSendingCount).to.equal(1);
 
-      await this.weeklyLottery.randomSend(
-        await getTicketId(this.weeklyLottery)
-      );
-      tokenSengingStatus = await this.weeklyLottery.tokenSengingStatus();
-      expect(tokenSengingStatuses[tokenSengingStatus]).to.equal(
-        "DEFINITELY_SEND"
-      );
+  //     await this.weeklyLottery.randomSend(
+  //       await getTicketId(this.weeklyLottery)
+  //     );
+  //     tokenSengingStatus = await this.weeklyLottery.tokenSengingStatus();
+  //     expect(tokenSengingStatuses[tokenSengingStatus]).to.equal(
+  //       "DEFINITELY_SEND"
+  //     );
 
-      let currentDefinitelySendingId =
-        await this.weeklyLottery.currentDefinitelySendingId();
-      expect(currentDefinitelySendingId).to.equal(1);
-      await this.weeklyLottery.definitelySend();
+  //     let currentDefinitelySendingId =
+  //       await this.weeklyLottery.currentDefinitelySendingId();
+  //     expect(currentDefinitelySendingId).to.equal(1);
+  //     await this.weeklyLottery.definitelySend();
 
-      currentDefinitelySendingId =
-        await this.weeklyLottery.currentDefinitelySendingId();
-      expect(currentDefinitelySendingId).to.equal(2);
-      await this.weeklyLottery.definitelySend();
+  //     currentDefinitelySendingId =
+  //       await this.weeklyLottery.currentDefinitelySendingId();
+  //     expect(currentDefinitelySendingId).to.equal(2);
+  //     await this.weeklyLottery.definitelySend();
 
-      status = await this.weeklyLottery.status();
-      expect(statuses[status]).to.equal("DONE");
+  //     status = await this.weeklyLottery.status();
+  //     expect(statuses[status]).to.equal("DONE");
 
-      const _index = await this.weeklyLottery.index();
-      expect(_index).to.equal(2);
+  //     const _index = await this.weeklyLottery.index();
+  //     expect(_index).to.equal(2);
 
-      await printData(
-        this.signers,
-        this.lotteryERC20,
-        this.weeklyLottery,
-        "After"
-      );
-    });
-  });
+  //     await this.weeklyLottery.statusToAccepting();
+
+  //     status = await this.weeklyLottery.status();
+  //     expect(statuses[status]).to.equal("ACCEPTING");
+
+  //     closeTimestamp = Number(await this.weeklyLottery.closeTimestamp());
+  //     expect(closeTimestamp % 3600).to.equal(0);
+
+  //     await printData(
+  //       this.signers,
+  //       this.lotteryERC20,
+  //       this.weeklyLottery,
+  //       "After"
+  //     );
+  //   });
+  // });
 });
