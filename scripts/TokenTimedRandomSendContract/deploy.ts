@@ -9,10 +9,12 @@ import getConfig from "../config";
 
 const networkName = network.name;
 const config = getConfig(networkName);
+const sleep = (waitTime: any) =>
+  new Promise((resolve) => setTimeout(resolve, waitTime));
 
 async function main() {
   if (config === undefined) {
-    console.log("require set config: ", networkName);
+    console.log("require set config:", networkName);
     return;
   }
 
@@ -51,17 +53,18 @@ async function main() {
         config.vrfCoordinator,
         config.keyHash
       );
+    await tokenTimedRandomSendContract.deployed();
   }
+  await sleep(5000);
 
-  await tokenTimedRandomSendContract.deployed();
-  console.log("setSellerCommissionRatio: ", config.sellerCommissionRatio);
+  console.log("setSellerCommissionRatio:", config.sellerCommissionRatio);
   await tokenTimedRandomSendContract.setSellerCommissionRatio(
     config.sellerCommissionRatio
   );
 
   // set rule
   for (const rule of config.randomSendingRules) {
-    setTimeout(() => null, 3000);
+    await sleep(5000);
     console.log(rule);
     await tokenTimedRandomSendContract.createRandomSendingRule(
       rule.raito,
@@ -69,15 +72,21 @@ async function main() {
     );
   }
 
+  await sleep(15000);
+  console.log("createDefinitelySendingRule");
   await tokenTimedRandomSendContract.createDefinitelySendingRule(
     1 / 0.1, // 10%
     deployer.address // owner
   );
 
+  await sleep(15000);
+  console.log("complatedRuleSetting");
   await tokenTimedRandomSendContract.complatedRuleSetting();
+  await sleep(15000);
+  console.log("statusToAccepting");
   await tokenTimedRandomSendContract.statusToAccepting();
   console.log(
-    "tokenTimedRandomSendContract contract: ",
+    "tokenTimedRandomSendContract contract:",
     tokenTimedRandomSendContract.address
   );
 }
