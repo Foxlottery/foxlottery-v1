@@ -60,6 +60,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     uint public definitelySendingRuleRatioTotalAmount;
     mapping(uint => uint) public totalSupplyByIndex;
     uint public currentDefinitelySendingId;
+    mapping(address => bool) public isDestinationAddress;
 
     // event count
     uint public index = 1;
@@ -96,7 +97,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
 
     // seller
     uint public sendToSellerIndex;
-    mapping(uint => address[]) public sellers;
+    mapping(uint => address[]) public _sellers;
     mapping(uint => mapping(address => bool)) private _isSeller;
     mapping(uint => mapping(address => uint)) private _tokenAmountToSeller;
 
@@ -162,7 +163,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     */
     function buyTicket(uint256 __ticketCount, address seller) public payable onlyByStatus(Status.ACCEPTING) onlyOwnerWhenIsOnlyOwner requireUnberMaxCount(_ticketIds[index][msg.sender].length) {
         uint tokenAmount = __ticketCount * ticketPrice;
-        require(erc20.balanceOf(msg.sender) >= tokenAmount, "TokenTimedRandomSendContract: Not enough erc20 tokens.");
+        require(erc20.balanceOf(msg.sender) >= tokenAmount, "Not enough erc20 tokens.");
 
         // ticket
         _ticketLastId[index]++;
@@ -181,7 +182,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
 
         if (!_isSeller[index][seller]) {
             _isSeller[index][seller] = true;
-            sellers[index].push(seller);
+            _sellers[index].push(seller);
         }
         if (sellerCommissionRatio > 0) {
           _tokenAmountToSeller[index][seller] = _tokenAmountToSeller[index][seller] + tokenAmount.div(sellerCommissionRatio);
@@ -248,12 +249,14 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
         onlyOwner
         requireUnberMaxCount(lastDefinitelySendingRuleId)
         noZero(_ratio)
-        canCreateSendingRule(_ratio, 1) 
+        canCreateSendingRule(_ratio, 1)   
+        requireIsDestinationAddress(_destinationAddress)
     {
         lastDefinitelySendingRuleId++;
 
         definitelySendingRuleAddress[lastDefinitelySendingRuleId] = _destinationAddress;
         definitelySendingRuleRatio[lastDefinitelySendingRuleId] = _ratio;
+        isDestinationAddress[_destinationAddress] = true;
 
         definitelySendingRuleRatioTotalAmount = definitelySendingRuleRatioTotalAmount + ratioAmount(_ratio);
     }
@@ -263,14 +266,19 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
         sellerCommissionRatioTotalAmount = ratioAmount(sellerCommissionRatio);
     }
 
+    modifier requireIsDestinationAddress(address _destinationAddress) {
+        require(isDestinationAddress[_destinationAddress] == false, "This address has already been added.");
+        _;
+    }
+
     modifier noZero(uint number) {
-        require(number > 0);
+        require(number > 0, "noZero");
         _;
 
     }
 
     modifier requireUnberMaxCount(uint number) {
-        require(number < MAX_COUNT);
+        require(number < MAX_COUNT, "requireUnberMaxCount");
         _;
     }
 
@@ -282,12 +290,12 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     }
 
     modifier onlyByStatus(Status _status) {
-        require(_status == status);
+        require(_status == status, "onlyByStatus");
         _;
     }
 
     modifier onlyByTokenSendingStatus(TokenSengingStatus _tokenSengingStatus) {
-        require(_tokenSengingStatus == tokenSengingStatus);
+        require(_tokenSengingStatus == tokenSengingStatus, "onlyByTokenSendingStatus");
         _;
     }
 
@@ -302,7 +310,7 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     }
 
     modifier requireUnderMaxSendingCount(uint sendingCount) {
-        require(MAX_SENDING_COUNT >= sendingCount);
+        require(MAX_SENDING_COUNT >= sendingCount, "requireUnderMaxSendingCount");
         _;
     }
 
@@ -312,11 +320,10 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     * @param _sendingCount SendingRule sending count
     */
     modifier canCreateSendingRule(uint _ratio, uint _sendingCount) {
-        
         uint totalAmount = randomSendingRuleRatioTotalAmount + definitelySendingRuleRatioTotalAmount + sellerCommissionRatioTotalAmount + (ratioAmount(_ratio) * _sendingCount);
         require(
             totalAmount < baseTokenAmount, 
-            "TimedRandomSendContract: Only less than 100%"
+            "Only less than 100%"
         );
         _;
     }
@@ -355,6 +362,10 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
 
     function ticketHolder(uint _index, uint _ticketId) external view returns(address) {
         return _ticketHolder[_index][_ticketId];
+    }
+
+    function sellers(uint _index) external view returns(address[] memory) {
+        return _sellers[_index];
     }
 
     function isSeller(uint _index, address seller) external view returns(bool) {
@@ -441,10 +452,10 @@ contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
     // token sending ---------->
     // The cycle of token sending is: transfer of tokens to the SELLER, random transfer to the drawer, and  definitely sending.
     function sendToSeller() public onlyByStatus(Status.TOKEN_SENDING) onlyByTokenSendingStatus(TokenSengingStatus.SEND_TO_SELLER) requireRandomValue {
-        require(sellers[index][sendToSellerIndex] != address(0));
-        address _seller = sellers[index][sendToSellerIndex];
+        require(_sellers[index][sendToSellerIndex] != address(0));
+        address _seller = _sellers[index][sendToSellerIndex];
         uint tokenAmount = _tokenAmountToSeller[index][_seller];
-        if ((sellers[index].length - 1) == sendToSellerIndex) {
+        if ((_sellers[index].length - 1) == sendToSellerIndex) {
             sendToSellerIndex = 0;
             tokenSengingStatus = TokenSengingStatus.RANDOM_SEND;
         } else {
