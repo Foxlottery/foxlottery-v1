@@ -31,22 +31,22 @@ npx hardhat node
 
 ## test
 ```
-npx hardhat test test/hardhat/TokenTimedRandomSendContract.ts
+npx hardhat test test/hardhat/Lottery.ts
 npx hardhat test test/hardhat/LotteryERC20.ts
 ```
 
 ## local net deploy
 ```
 npx hardhat run --network localhost scripts/LotteryERC20/deploy.ts
-npx hardhat run --network localhost scripts/TokenTimedRandomSendContract/deploy.ts
+npx hardhat run --network localhost scripts/Lottery/deploy.ts
 ```
 
 ## test net deploy
 ```
-npx hardhat run --network rinkeby scripts/TokenTimedRandomSendContract/deploy.ts
-npx hardhat run --network mumbai scripts/TokenTimedRandomSendContract/deploy.ts
-npx hardhat run --network binanceSmartCahinTestnet scripts/TokenTimedRandomSendContract/deploy.ts
-npx hardhat run --network avalancheFuji scripts/TokenTimedRandomSendContract/deploy.ts
+npx hardhat run --network rinkeby scripts/Lottery/deploy.ts
+npx hardhat run --network mumbai scripts/Lottery/deploy.ts
+npx hardhat run --network binanceSmartCahinTestnet scripts/Lottery/deploy.ts
+npx hardhat run --network avalancheFuji scripts/Lottery/deploy.ts
 ```
 
 # White Paper

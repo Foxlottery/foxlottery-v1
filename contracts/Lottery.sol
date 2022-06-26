@@ -10,11 +10,11 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
 /**
- * @title TokenTimedRandomSendContract
+ * @title Lottery
  * @author Seiya Takahashi (github: https://github.com/PeterTakahashi)
  * @notice The owner can easily create a lottery by setting the closing time, the rules of the drawing, the commission to the seller, and the name.
  */
-contract TokenTimedRandomSendContract is VRFConsumerBaseV2, Ownable {
+contract Lottery is VRFConsumerBaseV2, Ownable {
     using SafeMath for uint256;
     enum Status { 
         ACCEPTING,
