@@ -29,66 +29,52 @@ async function main() {
 
   console.log("ERC20 Account balance:", deployerTokenAmount);
 
-  const tokenTimedRandomSendContractFactory = await ethers.getContractFactory(
-    "TokenTimedRandomSendContract"
-  );
+  const lotteryFactory = await ethers.getContractFactory("Lottery");
 
-  let tokenTimedRandomSendContract;
-  if (config.tokenTimedRandomSendContract !== null) {
-    tokenTimedRandomSendContract =
-      await tokenTimedRandomSendContractFactory.attach(
-        config.tokenTimedRandomSendContract
-      );
+  let lottery;
+  if (config.lottery !== null) {
+    lottery = await lotteryFactory.attach(config.lottery);
   } else {
-    tokenTimedRandomSendContract =
-      await tokenTimedRandomSendContractFactory.deploy(
-        config.name,
-        config.symbol,
-        ERC20.address,
-        config.ticketPrice,
-        config.isOnlyOwner,
-        config.cycle,
-        config.closeTimestamp,
-        config.subscriptionId,
-        config.vrfCoordinator,
-        config.keyHash
-      );
-    await tokenTimedRandomSendContract.deployed();
+    lottery = await lotteryFactory.deploy(
+      config.name,
+      config.symbol,
+      ERC20.address,
+      config.ticketPrice,
+      config.isOnlyOwner,
+      config.cycle,
+      config.closeTimestamp,
+      config.subscriptionId,
+      config.vrfCoordinator,
+      config.keyHash
+    );
+    await lottery.deployed();
   }
   await sleep(5000);
 
   console.log("setSellerCommissionRatio:", config.sellerCommissionRatio);
-  await tokenTimedRandomSendContract.setSellerCommissionRatio(
-    config.sellerCommissionRatio
-  );
+  await lottery.setSellerCommissionRatio(config.sellerCommissionRatio);
 
   // set rule
   for (const rule of config.randomSendingRules) {
     await sleep(5000);
     console.log(rule);
-    await tokenTimedRandomSendContract.createRandomSendingRule(
-      rule.raito,
-      rule.sendingCount
-    );
+    await lottery.createRandomSendingRule(rule.raito, rule.sendingCount);
   }
 
   await sleep(15000);
   console.log("createDefinitelySendingRule");
-  await tokenTimedRandomSendContract.createDefinitelySendingRule(
+  await lottery.createDefinitelySendingRule(
     1 / 0.1, // 10%
     deployer.address // owner
   );
 
   await sleep(15000);
   console.log("complatedRuleSetting");
-  await tokenTimedRandomSendContract.complatedRuleSetting();
+  await lottery.complatedRuleSetting();
   await sleep(15000);
   console.log("statusToAccepting");
-  await tokenTimedRandomSendContract.statusToAccepting();
-  console.log(
-    "tokenTimedRandomSendContract contract:",
-    tokenTimedRandomSendContract.address
-  );
+  await lottery.statusToAccepting();
+  console.log("lottery contract:", lottery.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

@@ -69,15 +69,13 @@ async function getTicketId(weeklyLottery: any) {
   return ticketId;
 }
 
-describe("TokenTimedRandomSendContract", function () {
+describe("Lottery", function () {
   describe("isOnlyOwner = false", function () {
     const _isOnlyOwner = false;
     describe("changing rule", function () {
       beforeEach(async function () {
         this.lotteryERC20 = await ethers.getContractFactory("LotteryERC20");
-        this.weeklyLottery = await ethers.getContractFactory(
-          "TokenTimedRandomSendContract"
-        );
+        this.weeklyLottery = await ethers.getContractFactory("Lottery");
         this.signers = await ethers.getSigners();
 
         this.lotteryERC20 = await this.lotteryERC20.deploy();
@@ -199,9 +197,7 @@ describe("TokenTimedRandomSendContract", function () {
     describe("buyticket", function () {
       beforeEach(async function () {
         this.lotteryERC20 = await ethers.getContractFactory("LotteryERC20");
-        this.weeklyLottery = await ethers.getContractFactory(
-          "TokenTimedRandomSendContract"
-        );
+        this.weeklyLottery = await ethers.getContractFactory("Lottery");
         this.signers = await ethers.getSigners();
 
         this.lotteryERC20 = await this.lotteryERC20.deploy();
@@ -841,9 +837,7 @@ describe("TokenTimedRandomSendContract", function () {
 
     beforeEach(async function () {
       this.lotteryERC20 = await ethers.getContractFactory("LotteryERC20");
-      this.weeklyLottery = await ethers.getContractFactory(
-        "TokenTimedRandomSendContract"
-      );
+      this.weeklyLottery = await ethers.getContractFactory("Lottery");
       this.signers = await ethers.getSigners();
 
       this.lotteryERC20 = await this.lotteryERC20.deploy();
@@ -1043,7 +1037,7 @@ describe("TokenTimedRandomSendContract", function () {
   //   beforeEach(async function () {
   //     this.lotteryERC20 = await ethers.getContractFactory("LotteryERC20");
   //     this.weeklyLottery = await ethers.getContractFactory(
-  //       "TokenTimedRandomSendContract"
+  //       "Lottery"
   //     );
   //     this.signers = await ethers.getSigners();
 

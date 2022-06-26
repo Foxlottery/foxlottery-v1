@@ -2,7 +2,7 @@ const name = "weeklyLottery";
 
 const config = {
   localhost: {
-    tokenTimedRandomSendContract: null,
+    lottery: null,
     ERC20Address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     name,
     symbol: "WLT",
@@ -25,7 +25,7 @@ const config = {
     sellerCommissionRatio: 100,
   },
   rinkeby: {
-    tokenTimedRandomSendContract: null,
+    lottery: null,
     ERC20Address: "0x4AbD33CBCE982b3DC95330963BF5E13DB51ee850",
     name,
     symbol: "WLT",
@@ -48,7 +48,7 @@ const config = {
     sellerCommissionRatio: 100,
   },
   mumbai: {
-    tokenTimedRandomSendContract: null,
+    lottery: null,
     ERC20Address: "0x8Ff7347c2855ecC798FF1126e50458074952EAfa",
     name,
     symbol: "WLT",
@@ -71,7 +71,7 @@ const config = {
     sellerCommissionRatio: 100,
   },
   binanceSmartCahinTestnet: {
-    tokenTimedRandomSendContract: null,
+    lottery: null,
     ERC20Address: "0xBec8413eddaE169D36cEAF91Ba3F6ec4bB940231",
     name,
     symbol: "WLT",
@@ -94,7 +94,7 @@ const config = {
     sellerCommissionRatio: 100,
   },
   avalancheFuji: {
-    tokenTimedRandomSendContract: null,
+    lottery: null,
     ERC20Address: "0xBec8413eddaE169D36cEAF91Ba3F6ec4bB940231",
     name,
     symbol: "WLT",
