@@ -11,9 +11,9 @@ const config = {
       "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc",
     subscriptionId: 6111,
     randomSendingRules: [
-      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
       { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
+      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
+      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
     ],
     ticketPrice: String(10 ** 18),
     isOnlyOwner: false,
@@ -57,9 +57,9 @@ const config = {
       "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc",
     subscriptionId: 623,
     randomSendingRules: [
-      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
       { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
+      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
+      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
     ],
     ticketPrice: String(10 ** 18),
     isOnlyOwner: false,

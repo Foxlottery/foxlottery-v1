@@ -56,11 +56,13 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
     /// definitelySendingRule
     uint public lastDefinitelySendingRuleId;
     mapping(uint => address) public definitelySendingRuleAddress;
-    mapping(uint => uint) private definitelySendingRuleRatio;
+    mapping(uint => uint) public definitelySendingRuleRatio;
     uint public definitelySendingRuleRatioTotalAmount;
-    mapping(uint => uint) public totalSupplyByIndex;
     uint public currentDefinitelySendingId;
     mapping(address => bool) public isDestinationAddress;
+
+    // totalSupplyB
+    mapping(uint => uint) public totalSupplyByIndex;
 
     // event count
     uint public index = 1;
@@ -159,7 +161,6 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
     * @param __ticketCount Amount of lottery tickets
     * @param seller ticket seller
     * @dev When you buy a lottery ticket, you lock the funds in a smart contract wallet.
-    * onlyOwnerWhenIsOnlyOwner オーナーだけがチケットを購入できるようにする or 誰でもチケットを購入できるようにする
     */
     function buyTicket(uint256 __ticketCount, address seller) public payable onlyByStatus(Status.ACCEPTING) onlyOwnerWhenIsOnlyOwner requireUnberMaxCount(_ticketIds[index][msg.sender].length) {
         uint tokenAmount = __ticketCount * ticketPrice;
@@ -227,6 +228,7 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
         noZero(_sendingCount)
         canCreateSendingRule(_ratio, _sendingCount)
         requireUnderMaxSendingCount(_sendingCount)
+        requireGreaterThanLastRandomSendingRuleRatio(_ratio)
     {
         lastRandomSendingRuleId++;
         
@@ -305,12 +307,17 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
     }
 
     modifier requireRandomValue() {
-        require(randomValue[index] != 0);
+        require(randomValue[index] != 0, "requireRandomValue");
         _;
     }
 
     modifier requireUnderMaxSendingCount(uint sendingCount) {
         require(MAX_SENDING_COUNT >= sendingCount, "requireUnderMaxSendingCount");
+        _;
+    }
+
+    modifier requireGreaterThanLastRandomSendingRuleRatio(uint ratio) {
+        require(randomSendingRuleRatio[lastRandomSendingRuleId] <= ratio, "requireGreaterThanLastRandomSendingRuleRatio");
         _;
     }
 
@@ -401,7 +408,6 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
 
     /**
     * @notice Change the status to accepting to be able to buy tickets.
-    * @dev 
     */
     function statusToAccepting() public onlyByStatus(Status.DONE) {
         if (index == 1) { 

@@ -9,14 +9,14 @@ async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
-  const lotteryERC20Contract = await ethers.getContractFactory("LotteryERC20");
-  const lotteryERC20 = await lotteryERC20Contract.deploy();
-  await lotteryERC20.deployed();
+  const TestUSDContract = await ethers.getContractFactory("TestUSD");
+  const TestUSD = await TestUSDContract.deploy();
+  await TestUSD.deployed();
   const tokenPrice = ethers.BigNumber.from("5000000000000000000000");
-  await lotteryERC20.mint(deployer.address, tokenPrice);
-  const deployerTokenAmount = await lotteryERC20.balanceOf(deployer.address);
-  console.log("lotteryERC20 contract: ", lotteryERC20.address);
-  console.log("LotteryERC20 Account balance:", deployerTokenAmount);
+  await TestUSD.mint(deployer.address, tokenPrice);
+  const deployerTokenAmount = await TestUSD.balanceOf(deployer.address);
+  console.log("TestUSD contract: ", TestUSD.address);
+  console.log("TestUSD Account balance:", deployerTokenAmount);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

@@ -32,12 +32,12 @@ npx hardhat node
 ## test
 ```
 npx hardhat test test/hardhat/Lottery.ts
-npx hardhat test test/hardhat/LotteryERC20.ts
+npx hardhat test test/hardhat/TestUSD.ts
 ```
 
 ## local net deploy
 ```
-npx hardhat run --network localhost scripts/LotteryERC20/deploy.ts
+npx hardhat run --network localhost scripts/TestUSD/deploy.ts
 npx hardhat run --network localhost scripts/Lottery/deploy.ts
 ```
 
