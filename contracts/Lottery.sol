@@ -4,17 +4,15 @@ pragma solidity ^0.8.14;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
-// chainlink
-import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
-import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "contracts/IRandomValueGenerator.sol";
+import "contracts/ILottery.sol";
 
 /**
  * @title Lottery
  * @author Seiya Takahashi (github: https://github.com/PeterTakahashi)
  * @notice The owner can easily create a lottery by setting the closing time, the rules of the drawing, the commission to the seller, and the name.
  */
-contract Lottery is VRFConsumerBaseV2, Ownable {
+contract Lottery is Ownable, ILottery {
     using SafeMath for uint256;
     enum Status { 
         ACCEPTING,
@@ -31,8 +29,8 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
         DEFINITELY_SEND
     }
     TokenSengingStatus public tokenSengingStatus;
-    uint private constant MAX_COUNT = 20;
-    uint private constant MAX_SENDING_COUNT = 1000;
+    uint private constant MAX_COUNT = 10;
+    uint private constant MAX_SENDING_COUNT = 100;
 
     // constant
     string public name;
@@ -40,7 +38,6 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
     uint public cycle; // Lottery time cycle
     uint public closeTimestamp;
     IERC20 public erc20; // erc20 token used for lottery
-    bool public isOnlyOwner;
     uint public immutable baseTokenAmount = 10 ** 18;
 
     // sellerCommission
@@ -61,32 +58,17 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
     uint public currentDefinitelySendingId;
     mapping(address => bool) public isDestinationAddress;
 
-    // totalSupplyB
+    // totalSupply
     mapping(uint => uint) public totalSupplyByIndex;
 
     // event count
     uint public index = 1;
 
-    // chainlink vrf
-    VRFCoordinatorV2Interface COORDINATOR;
-    uint64 public immutable subscriptionId;
-    // chainlink vrf coordinator
-    // see https://docs.chain.link/docs/vrf-contracts/#configurations
-    address public vrfCoordinator = 0x6168499c0cFfCaCD319c818142124B7A15E857ab;
-
-    // The gas lane to use, which specifies the maximum gas price to bump to.
-    // For a list of available gas lanes on each network,
-    // see https://docs.chain.link/docs/vrf-contracts/#configurations
-    bytes32 public keyHash = 0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc;
-    uint32 public callbackGasLimit = 100000;
-    uint16 public requestConfirmations = 3;
-    uint32 public numWords = 1;
-
     // ticket config
     uint public ticketPrice;
 
     // ticket
-    mapping(uint => uint) private _ticketLastId;
+    mapping(uint => uint) public ticketLastId;
     mapping(uint => mapping(uint => uint)) private _ticketCount;
     mapping(uint => mapping(uint => uint)) private _ticketLastNumber;
     mapping(uint => mapping(address => uint[])) private _ticketIds;
@@ -94,49 +76,29 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
     mapping(uint => mapping(uint => uint)) private _ticketReceivedAt;
 
     // participant
-    mapping(uint => uint) private _participantCount;
+    mapping(uint => uint) public participantCount;
     mapping(uint => mapping(address => bool)) private _isParticipated;
 
     // seller
     uint public sendToSellerIndex;
+    mapping(uint => uint) public sellerLastId;
     mapping(uint => address[]) public _sellers;
     mapping(uint => mapping(address => bool)) private _isSeller;
     mapping(uint => mapping(address => uint)) private _tokenAmountToSeller;
 
-    // getted random value by chainlink vrf
+    // random value
     mapping(uint => uint) public randomValue;
 
-    function fulfillRandomWords(
-        uint256, /* requestId */
-        uint256[] memory _randomWords
-    ) internal override {
-        randomValue[index] = _randomWords[0];
-        statusToTokenSending();
-    }
-
-    function requestRandomWords() private onlyOwner {
-        // Will revert if subscription is not set and funded.
-        COORDINATOR.requestRandomWords(
-            keyHash,
-            subscriptionId,
-            requestConfirmations,
-            callbackGasLimit,
-            numWords
-        );
-    }
+    IRandomValueGenerator public randomValueGenerator;
 
     constructor(
         string memory _name,
         string memory _symbol,
         IERC20 _erc20,
         uint _ticketPrice,
-        bool _isOnlyOwner,
         uint _cycle,
-        uint _closeTimestamp,
-        uint64 _subscriptionId,
-        address _vrfCoordinator,
-        bytes32 _keyHash
-    ) VRFConsumerBaseV2(vrfCoordinator)
+        uint _closeTimestamp
+    )
     {
         require(_cycle != 0 && (_cycle % 1 hours) == 0);
         require((_closeTimestamp % 1 hours) == 0);
@@ -145,15 +107,8 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
         symbol = _symbol;
         erc20 = _erc20;
         ticketPrice = _ticketPrice;
-        isOnlyOwner = _isOnlyOwner;
         cycle = _cycle;
         closeTimestamp = _closeTimestamp;
-
-        // chainlink
-        COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
-        subscriptionId = _subscriptionId;
-        vrfCoordinator = _vrfCoordinator;
-        keyHash = _keyHash;
     }
 
      /**
@@ -162,19 +117,19 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
     * @param seller ticket seller
     * @dev When you buy a lottery ticket, you lock the funds in a smart contract wallet.
     */
-    function buyTicket(uint256 __ticketCount, address seller) public payable onlyByStatus(Status.ACCEPTING) onlyOwnerWhenIsOnlyOwner requireUnberMaxCount(_ticketIds[index][msg.sender].length) {
+    function buyTicket(uint256 __ticketCount, address seller) public payable onlyByStatus(Status.ACCEPTING) requireUnberMaxCount(_ticketIds[index][msg.sender].length) {
         uint tokenAmount = __ticketCount * ticketPrice;
         require(erc20.balanceOf(msg.sender) >= tokenAmount, "Not enough erc20 tokens.");
 
         // ticket
-        _ticketLastId[index]++;
-        _ticketCount[index][_ticketLastId[index]] = __ticketCount;
-        _ticketLastNumber[index][_ticketLastId[index]] = _ticketLastNumber[index][_ticketLastId[index] - 1] + __ticketCount;
+        ticketLastId[index]++;
+        _ticketCount[index][ticketLastId[index]] = __ticketCount;
+        _ticketLastNumber[index][ticketLastId[index]] = _ticketLastNumber[index][ticketLastId[index] - 1] + __ticketCount;
 
-        _ticketIds[index][msg.sender].push(_ticketLastId[index]);
-        _ticketReceivedAt[index][_ticketLastId[index]] = block.timestamp;
+        _ticketIds[index][msg.sender].push(ticketLastId[index]);
+        _ticketReceivedAt[index][ticketLastId[index]] = block.timestamp;
 
-        _ticketHolder[index][_ticketLastId[index]] = msg.sender;
+        _ticketHolder[index][ticketLastId[index]] = msg.sender;
 
         addParticipantCount(msg.sender);
 
@@ -209,7 +164,7 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
     function addParticipantCount(address user) internal {
         if (!_isParticipated[index][user]) {
             // lottery purchaser add participants
-            _participantCount[index] += 1;
+            participantCount[index] += 1;
         }
 
         _isParticipated[index][user] = true;
@@ -268,6 +223,16 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
         sellerCommissionRatioTotalAmount = ratioAmount(sellerCommissionRatio);
     }
 
+    function setRandomValue(uint _randomValue) external {
+        require(msg.sender == address(randomValueGenerator));
+        randomValue[index] = _randomValue;
+        statusToTokenSending();
+    }
+
+    function setRandomValueGenerator(IRandomValueGenerator _randomValueGenerator) external onlyOwner onlyByStatus(Status.RULE_SETTING) {
+        randomValueGenerator = _randomValueGenerator;
+    }
+
     modifier requireIsDestinationAddress(address _destinationAddress) {
         require(isDestinationAddress[_destinationAddress] == false, "This address has already been added.");
         _;
@@ -281,13 +246,6 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
 
     modifier requireUnberMaxCount(uint number) {
         require(number < MAX_COUNT, "requireUnberMaxCount");
-        _;
-    }
-
-    modifier onlyOwnerWhenIsOnlyOwner {
-        if (isOnlyOwner) {
-            require(owner() == _msgSender(), "Ownable: caller is not the owner");
-        }
         _;
     }
 
@@ -339,10 +297,6 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
         return _ticketIds[index][msg.sender][_ticketIdsIndex];
     }
 
-    function ticketLastId(uint _index) external view returns(uint) {
-        return _ticketLastId[_index];
-    }
-
     function ticketCount(uint _index, uint ticketId) external view returns(uint) {
         return _ticketCount[_index][ticketId];
     }
@@ -353,10 +307,6 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
 
     function ticketReceivedAt(uint _index, uint ticketId) external view returns(uint) {
         return _ticketReceivedAt[_index][ticketId];
-    }
-
-    function participantCount(uint _index) external view returns(uint) {
-        return _participantCount[_index];
     }
 
     function isParticipated(uint _index, address user) external view returns(bool) {
@@ -429,15 +379,10 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
         require(closeTimestamp < block.timestamp, "after closeTimestamp");
         status = Status.RANDOM_VALUE_GETTING;
         totalSupplyByIndex[index] = totalSupply();
-        // production
-        requestRandomWords();
-
-        // test
-        // randomValue[index] = 10000;
-        // statusToTokenSending();
+        randomValueGenerator.requestRandomWords();
     }
 
-    function statusToTokenSending() internal {
+    function statusToTokenSending() private {
         tokenSengingStatus = TokenSengingStatus.SEND_TO_SELLER;
         status = Status.TOKEN_SENDING;
         currentRandomSendingRuleId = 1;
@@ -451,6 +396,7 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
     }
 
     function complatedRuleSetting() public onlyOwner onlyByStatus(Status.RULE_SETTING) requireRandomSendingRules {
+        require(address(randomValueGenerator) != address(0));
         status = Status.DONE;
     }
     // <---------- change status
@@ -471,21 +417,21 @@ contract Lottery is VRFConsumerBaseV2, Ownable {
     }
 
     function convertedNumber(uint number) private view returns (uint) {
-        return uint(keccak256(abi.encode(number))) % _ticketLastNumber[index][_ticketLastId[index]];
+        return uint(keccak256(abi.encode(number))) % _ticketLastNumber[index][ticketLastId[index]];
     }
 
     function convertRandomValueToWinnerTicketNumber() public view returns (uint) {
         uint uniquRandamValue = randomValue[index] + convertedNumber(currentRandomSendingRuleId * MAX_SENDING_COUNT) + convertedNumber(currentRandomSendingRuleSendingCount);
         uniquRandamValue = convertedNumber(uniquRandamValue);
         if (uniquRandamValue == 0) {
-            return _ticketLastNumber[index][_ticketLastId[index]];
+            return _ticketLastNumber[index][ticketLastId[index]];
         } else {
             return uniquRandamValue;
         }
     }
 
     function randomSend(uint _ticketId) public onlyByStatus(Status.TOKEN_SENDING) onlyByTokenSendingStatus(TokenSengingStatus.RANDOM_SEND) {
-        require(_ticketLastId[index] >= _ticketId);
+        require(ticketLastId[index] >= _ticketId);
         require(_ticketId > 0, "require over then 0");
         uint winnerTicketNumber = convertRandomValueToWinnerTicketNumber();
         require(_ticketLastNumber[index][_ticketId - 1] < winnerTicketNumber && (_ticketLastNumber[index][_ticketId - 1] + _ticketCount[index][_ticketId]) >= winnerTicketNumber);

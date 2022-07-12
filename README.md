@@ -31,6 +31,7 @@ npx hardhat node
 
 ## test
 ```
+npx hardhat test test/hardhat/RandomValueGeneratorMock.ts
 npx hardhat test test/hardhat/Lottery.ts
 npx hardhat test test/hardhat/TestUSD.ts
 ```
