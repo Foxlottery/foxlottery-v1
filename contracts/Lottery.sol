@@ -287,8 +287,17 @@ contract Lottery is Ownable, ILottery {
     modifier canCreateSendingRule(uint _ratio, uint _sendingCount) {
         uint totalAmount = randomSendingRuleRatioTotalAmount + definitelySendingRuleRatioTotalAmount + sellerCommissionRatioTotalAmount + (ratioAmount(_ratio) * _sendingCount);
         require(
-            totalAmount < baseTokenAmount, 
+            totalAmount <= baseTokenAmount, 
             "Only less than 100%"
+        );
+        _;
+    }
+
+    modifier requireRule100Percentage() {
+        uint totalAmount = randomSendingRuleRatioTotalAmount + definitelySendingRuleRatioTotalAmount + sellerCommissionRatioTotalAmount;
+        require(
+            totalAmount == baseTokenAmount, 
+            "require rule is 100%"
         );
         _;
     }
@@ -395,7 +404,7 @@ contract Lottery is Ownable, ILottery {
         index++;
     }
 
-    function complatedRuleSetting() public onlyOwner onlyByStatus(Status.RULE_SETTING) requireRandomSendingRules {
+    function complatedRuleSetting() public onlyOwner onlyByStatus(Status.RULE_SETTING) requireRule100Percentage requireRandomSendingRules {
         require(address(randomValueGenerator) != address(0));
         status = Status.DONE;
     }

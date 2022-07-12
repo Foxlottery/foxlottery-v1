@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 
 const _ticketPrice = String(10 ** 19);
 const index = 1;
-const sellerCommissionRatio = 100;
+const sellerCommissionRatio = 1 / 0.05;
 const cycle = 3600;
 const closeTimestamp =
   Math.floor(Date.now() / 1000) +
@@ -87,10 +87,13 @@ describe("Lottery", function () {
       await this.weeklyLottery.setSellerCommissionRatio(sellerCommissionRatio);
 
       // set rule
+      // 1: 25% x 1 = 25%
+      // 2: 5% x 4 = 20%
+      // 3: 1% x 10 = 10%
       const randomSendingRules = [
-        { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-        { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-        { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
+        { raito: 1 / 0.25, sendingCount: 1 },
+        { raito: 1 / 0.05, sendingCount: 4 },
+        { raito: 1 / 0.01, sendingCount: 10 },
       ];
       await randomSendingRules.forEach(async (rule) => {
         await this.weeklyLottery.createRandomSendingRule(
@@ -110,13 +113,6 @@ describe("Lottery", function () {
         this.weeklyLottery,
         "beforeEach"
       );
-    });
-
-    it("createRandomSendingRule should raise error", async function () {
-      await this.weeklyLottery.complatedRuleSetting();
-      await expect(
-        this.weeklyLottery.createRandomSendingRule(1 / 0.1, 1)
-      ).to.be.revertedWith("onlyByStatus");
     });
 
     it("createRandomSendingRule should raise error", async function () {
@@ -141,16 +137,6 @@ describe("Lottery", function () {
       await expect(
         this.weeklyLottery.createRandomSendingRule(1 / 0.0001, 1001)
       ).to.be.revertedWith("requireUnderMaxSendingCount");
-    });
-
-    it("createDefinitelySendingRule should raise error", async function () {
-      await this.weeklyLottery.complatedRuleSetting();
-      await expect(
-        this.weeklyLottery.createDefinitelySendingRule(
-          1 / 0.1, // 20%
-          this.signers[1].address // owner
-        )
-      ).to.be.revertedWith("onlyByStatus");
     });
 
     it("createDefinitelySendingRule should raise error", async function () {
@@ -215,10 +201,17 @@ describe("Lottery", function () {
       await this.weeklyLottery.setSellerCommissionRatio(sellerCommissionRatio);
 
       // set rule
+      // 1: 25% x 1 = 25%
+      // 2: 5% x 4 = 20%
+      // 3: 1% x 10 = 10%
+      // 4: 0.5% x 20 = 10%
+      // 5: 0.1% x 100 = 10%
       const randomSendingRules = [
-        { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-        { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-        { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
+        { raito: 1 / 0.25, sendingCount: 1 },
+        { raito: 1 / 0.05, sendingCount: 4 },
+        { raito: 1 / 0.01, sendingCount: 10 },
+        { raito: 1 / 0.005, sendingCount: 20 },
+        { raito: 1 / 0.001, sendingCount: 100 },
       ];
       await randomSendingRules.forEach(async (rule) => {
         await this.weeklyLottery.createRandomSendingRule(
@@ -345,7 +338,7 @@ describe("Lottery", function () {
         index,
         seller.address
       );
-      expect(tokenAmountToSeller).to.equal("300000000000000000");
+      expect(tokenAmountToSeller).to.equal("1500000000000000000");
       tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
         index,
         user.address
@@ -443,7 +436,7 @@ describe("Lottery", function () {
         index,
         seller.address
       );
-      expect(tokenAmountToSeller).to.equal("600000000000000000");
+      expect(tokenAmountToSeller).to.equal("3000000000000000000");
       tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
         index,
         user.address
@@ -552,7 +545,7 @@ describe("Lottery", function () {
         index,
         seller.address
       );
-      expect(tokenAmountToSeller).to.equal("900000000000000000");
+      expect(tokenAmountToSeller).to.equal("4500000000000000000");
       tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
         index,
         user.address
