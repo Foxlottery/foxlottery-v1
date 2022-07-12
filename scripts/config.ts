@@ -1,4 +1,12 @@
 const name = "weeklyLottery";
+const randomSendingRules = [
+  { raito: 1 / 0.25, sendingCount: 1 },
+  { raito: 1 / 0.05, sendingCount: 4 },
+  { raito: 1 / 0.01, sendingCount: 10 },
+  { raito: 1 / 0.005, sendingCount: 20 },
+  { raito: 1 / 0.001, sendingCount: 100 },
+];
+const sellerCommissionRatio = 1 / 0.05;
 
 const config = {
   localhost: {
@@ -10,18 +18,14 @@ const config = {
     keyHash:
       "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc",
     subscriptionId: 6111,
-    randomSendingRules: [
-      { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-    ],
+    randomSendingRules: randomSendingRules,
     ticketPrice: String(10 ** 18),
     cycle: 86400 * 7,
     closeTimestamp:
       Math.floor(Date.now() / 1000) +
       (3600 - (Math.floor(Date.now() / 1000) % 3600)) +
       86400 * 7,
-    sellerCommissionRatio: 100,
+    sellerCommissionRatio: sellerCommissionRatio,
   },
   rinkeby: {
     lottery: null,
@@ -32,18 +36,14 @@ const config = {
     keyHash:
       "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc",
     subscriptionId: 6111,
-    randomSendingRules: [
-      { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-    ],
+    randomSendingRules: randomSendingRules,
     ticketPrice: String(10 ** 18),
     cycle: 86400 * 7,
     closeTimestamp:
       Math.floor(Date.now() / 1000) +
       (3600 - (Math.floor(Date.now() / 1000) % 3600)) +
       86400 * 7,
-    sellerCommissionRatio: 100,
+    sellerCommissionRatio: sellerCommissionRatio,
   },
   mumbai: {
     lottery: null,
@@ -54,18 +54,14 @@ const config = {
     keyHash:
       "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc",
     subscriptionId: 623,
-    randomSendingRules: [
-      { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-    ],
+    randomSendingRules: randomSendingRules,
     ticketPrice: String(10 ** 18),
     cycle: 86400 * 7,
     closeTimestamp:
       Math.floor(Date.now() / 1000) +
       (3600 - (Math.floor(Date.now() / 1000) % 3600)) +
       86400 * 7,
-    sellerCommissionRatio: 100,
+    sellerCommissionRatio: sellerCommissionRatio,
   },
   binanceSmartCahinTestnet: {
     lottery: null,
@@ -76,18 +72,14 @@ const config = {
     keyHash:
       "0xd4bb89654db74673a187bd804519e65e3f71a52bc55f11da7601a13dcf505314",
     subscriptionId: 1094,
-    randomSendingRules: [
-      { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-    ],
+    randomSendingRules: randomSendingRules,
     ticketPrice: String(10 ** 18),
     cycle: 86400 * 7,
     closeTimestamp:
       Math.floor(Date.now() / 1000) +
       (3600 - (Math.floor(Date.now() / 1000) % 3600)) +
       86400 * 7,
-    sellerCommissionRatio: 100,
+    sellerCommissionRatio: sellerCommissionRatio,
   },
   avalancheFuji: {
     lottery: null,
@@ -98,18 +90,14 @@ const config = {
     keyHash:
       "0xd4bb89654db74673a187bd804519e65e3f71a52bc55f11da7601a13dcf505314",
     subscriptionId: 166,
-    randomSendingRules: [
-      { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
-    ],
+    randomSendingRules: randomSendingRules,
     ticketPrice: String(10 ** 18),
     cycle: 86400 * 7,
     closeTimestamp:
       Math.floor(Date.now() / 1000) +
       (3600 - (Math.floor(Date.now() / 1000) % 3600)) +
       86400 * 7,
-    sellerCommissionRatio: 100,
+    sellerCommissionRatio: sellerCommissionRatio,
   },
 };
 

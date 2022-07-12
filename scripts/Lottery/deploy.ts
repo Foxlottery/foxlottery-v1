@@ -73,7 +73,7 @@ async function main() {
   await sleep(15000);
   console.log("createDefinitelySendingRule");
   await lottery.createDefinitelySendingRule(
-    1 / 0.1, // 10%
+    1 / 0.2, // 20%
     deployer.address // owner
   );
 

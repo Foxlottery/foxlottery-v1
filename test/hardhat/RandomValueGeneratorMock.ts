@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 
 const _ticketPrice = String(10 ** 19);
 const index = 1;
-const sellerCommissionRatio = 100;
+const sellerCommissionRatio = 1 / 0.05;
 const cycle = 3600;
 const closeTimestamp =
   Math.floor(Date.now() / 1000) +
@@ -97,10 +97,13 @@ describe("RandomValueGeneratorMock", function () {
     await this.weeklyLottery.setSellerCommissionRatio(sellerCommissionRatio);
 
     // set rule
+    // 1: 50% x 1 = 50%
+    // 2: 5% x 4 = 20%
+    // 3: 1% x 5 = 5%
     const randomSendingRules = [
-      { raito: 1 / 0.25, sendingCount: 1 }, // There's a 25% chance 1 of us will win.
-      { raito: 1 / 0.05, sendingCount: 2 }, // There's a 5% chance 2 of us will win.
-      { raito: 1 / 0.01, sendingCount: 5 }, // There's a 1% chance 5 of us will win.
+      { raito: 1 / 0.5, sendingCount: 1 },
+      { raito: 1 / 0.05, sendingCount: 4 },
+      { raito: 1 / 0.01, sendingCount: 5 },
     ];
     await randomSendingRules.forEach(async (rule) => {
       await this.weeklyLottery.createRandomSendingRule(
@@ -196,6 +199,18 @@ describe("RandomValueGeneratorMock", function () {
     currentRandomSendingRuleSendingCount =
       await this.weeklyLottery.currentRandomSendingRuleSendingCount();
     expect(currentRandomSendingRuleSendingCount).to.equal(2);
+
+    await this.weeklyLottery.randomSend(await getTicketId(this.weeklyLottery));
+
+    currentRandomSendingRuleSendingCount =
+      await this.weeklyLottery.currentRandomSendingRuleSendingCount();
+    expect(currentRandomSendingRuleSendingCount).to.equal(3);
+
+    await this.weeklyLottery.randomSend(await getTicketId(this.weeklyLottery));
+
+    currentRandomSendingRuleSendingCount =
+      await this.weeklyLottery.currentRandomSendingRuleSendingCount();
+    expect(currentRandomSendingRuleSendingCount).to.equal(4);
 
     await this.weeklyLottery.randomSend(await getTicketId(this.weeklyLottery));
 
