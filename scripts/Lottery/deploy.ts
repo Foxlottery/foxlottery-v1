@@ -30,6 +30,9 @@ async function main() {
   console.log("ERC20 Account balance:", deployerTokenAmount);
 
   const lotteryFactory = await ethers.getContractFactory("Lottery");
+  const randomValueGeneratorFactory = await ethers.getContractFactory(
+    "RandomValueGenerator"
+  );
 
   let lottery;
   if (config.lottery !== null) {
@@ -40,14 +43,20 @@ async function main() {
       config.symbol,
       ERC20.address,
       config.ticketPrice,
-      config.isOnlyOwner,
       config.cycle,
-      config.closeTimestamp,
+      config.closeTimestamp
+    );
+    await sleep(5000);
+    const randomValueGenerator = await randomValueGeneratorFactory.deploy(
+      lottery.address,
       config.subscriptionId,
       config.vrfCoordinator,
       config.keyHash
     );
+    await sleep(5000);
+    await lottery.setRandomValueGenerator(randomValueGenerator.address);
     await lottery.deployed();
+    await randomValueGenerator.deployed();
   }
   await sleep(5000);
 
