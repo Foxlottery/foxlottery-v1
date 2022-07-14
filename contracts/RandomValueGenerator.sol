@@ -7,6 +7,11 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import "contracts/IRandomValueGenerator.sol";
 import "contracts/ILottery.sol";
 
+/**
+ * @title Lottery
+ * @author Seiya Takahashi (github: https://github.com/PeterTakahashi)
+ * @notice Generate random numbers from chainlink v2. After generating random number, set that in the lottery contract.
+ */
 contract RandomValueGenerator is VRFConsumerBaseV2, IRandomValueGenerator {
     // chainlink vrf
     VRFCoordinatorV2Interface public COORDINATOR;

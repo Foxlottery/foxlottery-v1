@@ -283,32 +283,32 @@ describe("Lottery", function () {
         seller
       );
 
-      // ticketLastIdが追加されていること
+      // ticketLastId must be added.
       const ticketLastId = await this.weeklyLottery.ticketLastId(index);
       expect(ticketLastId).to.equal("1");
 
-      // ticketLastNumberがあること
+      // Must have ticketLastNumber
       const ticketLastNumber = await this.weeklyLottery.ticketLastNumber(
         index,
         ticketLastId.toString()
       );
       expect(ticketLastNumber).to.equal("3");
 
-      // ticketCountが追加されていること
+      // TicketCount must be added.
       const ticketCount = await this.weeklyLottery.ticketCount(
         index,
         ticketLastId.toString()
       );
       expect(ticketCount).to.equal("3");
 
-      // isParticipatedがtrueに更新されていること
+      // isParticipated must be updated to true
       const isParticipated = await this.weeklyLottery.isParticipated(
         index,
         user.address
       );
       expect(isParticipated).to.equal(true);
 
-      // participantCountが更新されていること
+      // participantCount must be updated.
       const participantCount = await this.weeklyLottery.participantCount(index);
       expect(participantCount).to.equal("1");
 
@@ -323,11 +323,11 @@ describe("Lottery", function () {
       );
       expect(ticketReceivedAt <= new Date().getTime()).to.equal(true);
 
-      // 送金ができていること
+      // That the remittance has been made.
       const buyerAmount = await this.TestUSD.balanceOf(user.address);
       expect(buyerAmount).to.equal("70000000000000000000");
 
-      // sellerの登録されていること
+      // seller must be added.
       const _seller = await this.weeklyLottery.seller(index, 1);
       expect(_seller).to.equal(seller.address);
       let isSeller = await this.weeklyLottery.isSeller(index, seller.address);
@@ -378,32 +378,32 @@ describe("Lottery", function () {
         seller
       );
 
-      // ticketLastIdが追加されていること
+      // ticketLastId must be added.
       const ticketLastId = await this.weeklyLottery.ticketLastId(index);
       expect(ticketLastId).to.equal("2");
 
-      // ticketLastNumberがあること
+      // ticketLastNumber must have.
       const ticketLastNumber = await this.weeklyLottery.ticketLastNumber(
         index,
         ticketLastId.toString()
       );
       expect(ticketLastNumber).to.equal("6");
 
-      // ticketCountが追加されていること
+      // ticketCount must be added.
       const ticketCount = await this.weeklyLottery.ticketCount(
         index,
         ticketLastId.toString()
       );
       expect(ticketCount).to.equal("3");
 
-      // isParticipatedがtrueに更新されていること
+      // isParticipated must be updated.
       const isParticipated = await this.weeklyLottery.isParticipated(
         index,
         user.address
       );
       expect(isParticipated).to.equal(true);
 
-      // participantCountが更新されていること
+      // participantCount must be updated.
       const participantCount = await this.weeklyLottery.participantCount(index);
       expect(participantCount).to.equal("2");
 
@@ -418,14 +418,14 @@ describe("Lottery", function () {
       );
       expect(ticketReceivedAt <= new Date().getTime()).to.equal(true);
 
-      // 送金ができていること
+      // That the remittance has been made.
       let buyerAmount = await this.TestUSD.balanceOf(user.address);
       expect(buyerAmount).to.equal("70000000000000000000");
 
       buyerAmount = await this.TestUSD.balanceOf(this.signers[1].address);
       expect(buyerAmount).to.equal("70000000000000000000");
 
-      // sellerの登録されていること
+      // seller must be added.
       const _seller = await this.weeklyLottery.seller(index, 1);
       expect(_seller).to.equal(seller.address);
       let isSeller = await this.weeklyLottery.isSeller(index, seller.address);
@@ -484,32 +484,32 @@ describe("Lottery", function () {
         seller
       );
 
-      // ticketLastIdが追加されていること
+      // ticketLastId must be added.
       const ticketLastId = await this.weeklyLottery.ticketLastId(index);
       expect(ticketLastId).to.equal("3");
 
-      // ticketLastNumberがあること
+      // ticketLastNumber must have.
       const ticketLastNumber = await this.weeklyLottery.ticketLastNumber(
         index,
         ticketLastId.toString()
       );
       expect(ticketLastNumber).to.equal("9");
 
-      // ticketCountが追加されていること
+      // ticketCount must be added.
       const ticketCount = await this.weeklyLottery.ticketCount(
         index,
         ticketLastId.toString()
       );
       expect(ticketCount).to.equal("3");
 
-      // isParticipatedがtrueに更新されていること
+      // isParticipated must be updated.
       const isParticipated = await this.weeklyLottery.isParticipated(
         index,
         user.address
       );
       expect(isParticipated).to.equal(true);
 
-      // participantCountが更新されていること
+      // participantCount must be updated.
       const participantCount = await this.weeklyLottery.participantCount(index);
       expect(participantCount).to.equal("3");
 
@@ -524,7 +524,7 @@ describe("Lottery", function () {
       );
       expect(ticketReceivedAt <= new Date().getTime()).to.equal(true);
 
-      // 送金ができていること
+      // That the remittance has been made.
       let buyerAmount = await this.TestUSD.balanceOf(this.signers[2].address);
       expect(buyerAmount).to.equal("70000000000000000000");
 
@@ -534,7 +534,7 @@ describe("Lottery", function () {
       buyerAmount = await this.TestUSD.balanceOf(this.signers[0].address);
       expect(buyerAmount).to.equal("70000000000000000000");
 
-      // sellerの登録されていること
+      // seller must be added.
       const _seller = await this.weeklyLottery.seller(index, 1);
       expect(_seller).to.equal(seller.address);
       let isSeller = await this.weeklyLottery.isSeller(index, seller.address);
@@ -601,32 +601,32 @@ describe("Lottery", function () {
         this.signers[10]
       );
 
-      // ticketLastIdが追加されていること
+      // ticketLastId must be added.
       const ticketLastId = await this.weeklyLottery.ticketLastId(index);
       expect(ticketLastId).to.equal("4");
 
-      // ticketLastNumberがあること
+      // ticketLastNumber must have.
       const ticketLastNumber = await this.weeklyLottery.ticketLastNumber(
         index,
         ticketLastId.toString()
       );
       expect(ticketLastNumber).to.equal("12");
 
-      // ticketCountが追加されていること
+      // ticketCount must be added.
       const ticketCount = await this.weeklyLottery.ticketCount(
         index,
         ticketLastId.toString()
       );
       expect(ticketCount).to.equal("3");
 
-      // isParticipatedがtrueに更新されていること
+      // isParticipated must be updated.
       const isParticipated = await this.weeklyLottery.isParticipated(
         index,
         user.address
       );
       expect(isParticipated).to.equal(true);
 
-      // participantCountが更新されていること
+      // participantCount must be updated.
       const participantCount = await this.weeklyLottery.participantCount(index);
       expect(participantCount).to.equal("3");
 
@@ -657,7 +657,7 @@ describe("Lottery", function () {
       );
       expect(ticketReceivedAt <= new Date().getTime()).to.equal(true);
 
-      // 送金ができていること
+      // That the remittance has been made.
       let buyerAmount = await this.TestUSD.balanceOf(this.signers[2].address);
       expect(buyerAmount).to.equal("70000000000000000000");
 
@@ -667,7 +667,7 @@ describe("Lottery", function () {
       buyerAmount = await this.TestUSD.balanceOf(this.signers[0].address);
       expect(buyerAmount).to.equal("40000000000000000000");
 
-      // sellerがtokenをもらっていること
+      // The SELLER must have received a TOKEN.
       const sellerAmount = await this.TestUSD.balanceOf(
         this.signers[10].address
       );
@@ -710,28 +710,28 @@ describe("Lottery", function () {
       const ticketLastId = await this.weeklyLottery.ticketLastId(index);
       expect(ticketLastId).to.equal("1");
 
-      // ticketLastNumberがあること
+      // ticketLastNumber must have.
       const ticketLastNumber = await this.weeklyLottery.ticketLastNumber(
         index,
         ticketLastId.toString()
       );
       expect(ticketLastNumber).to.equal("3");
 
-      // ticketCountが追加されていること
+      // ticketCount must be added.
       const ticketCount = await this.weeklyLottery.ticketCount(
         index,
         ticketLastId.toString()
       );
       expect(ticketCount).to.equal("3");
 
-      // isParticipatedがtrueに更新されていること
+      // isParticipated must be updated.
       const isParticipated = await this.weeklyLottery.isParticipated(
         index,
         this.signers[1].address
       );
       expect(isParticipated).to.equal(true);
 
-      // participantCountが更新されていること
+      // participantCount must be updated.
       const participantCount = await this.weeklyLottery.participantCount(index);
       expect(participantCount).to.equal("2");
 

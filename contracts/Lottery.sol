@@ -30,6 +30,8 @@ contract Lottery is Ownable, ILottery {
     }
     TokenSengingStatus public tokenSengingStatus;
     uint private constant MAX_COUNT = 10;
+    // If there are many winners, gas costs will increase and lotteries will take longer to reunite.
+    // SENDING_COUNT is necessary to ensure that the number of LOTTERY winners is not too large.
     uint private constant MAX_SENDING_COUNT = 100;
 
     // constant
@@ -64,6 +66,7 @@ contract Lottery is Ownable, ILottery {
     mapping(uint => uint) public totalSupplyByIndex;
 
     // event count
+    // After the lotteries are completed, the index is plus one.
     uint public index = 1;
 
     // ticket config
@@ -115,13 +118,17 @@ contract Lottery is Ownable, ILottery {
         closeTimestamp = _closeTimestamp;
     }
 
-     /**
-    * @notice buy lottery ticket
+    /**
+    * @notice buy lottery ticket. require status is accepting.
     * @param __ticketCount Amount of lottery tickets
-    * @param _seller ticket seller
-    * @dev When you buy a lottery ticket, you lock the funds in a smart contract wallet.
+    * @param _seller ticket seller. Seller is required.
+    * @dev When you buy a lottery ticket, you lock the funds in a smart contract wallet. Cannot have more than MAX_COUNT tickets. After the completion of this lottery, The seller is remitted the token amount of ticket token amount / sellerCommissionRatio.
     */
-    function buyTicket(uint256 __ticketCount, address _seller) public payable onlyByStatus(Status.ACCEPTING) requireUnberMaxCount(_ticketIds[index][msg.sender].length) {
+    function buyTicket(uint256 __ticketCount, address _seller) public
+        payable 
+        onlyByStatus(Status.ACCEPTING)
+        requireUnberMaxCount(_ticketIds[index][msg.sender].length)
+    {
         uint tokenAmount = __ticketCount * ticketPrice;
         require(erc20.balanceOf(msg.sender) >= tokenAmount, "Not enough erc20 tokens.");
 
@@ -151,8 +158,16 @@ contract Lottery is Ownable, ILottery {
         emit Ticket(ticketLastId[index]);
     }
 
-    function sendTicket(uint ticketIdsIndex, address to) public onlyByStatus(Status.ACCEPTING) onlyOwner requireUnberMaxCount(_ticketIds[index][to].length) {
+    /**
+    * @notice send a ticket.
+    * @param ticketIdsIndex index of ticket ids to be sent
+    * @param to Ticket destination address
+    * @dev Delete the msg.sender's ticket and add a ticket to the destination address. Add the participant you are sending to as a participant
+    */
+    function sendTicket(uint ticketIdsIndex, address to) public onlyByStatus(Status.ACCEPTING) requireUnberMaxCount(_ticketIds[index][to].length) {
+        // TODO: 保持してないチケットを送金しようとした場合にエラーが出るようにする
         uint ticketId = ticketIdByTicketIds(ticketIdsIndex);
+        require(ticketId != 0);
 
         // remove
         _ticketIds[index][msg.sender][ticketIdsIndex] = _ticketIds[index][msg.sender][_ticketIds[index][msg.sender].length - 1];
@@ -165,21 +180,22 @@ contract Lottery is Ownable, ILottery {
     }
 
     /**
-    * @notice add participant count
+    * @notice Add Participant count on current lottery event if you are not already a participant
+    * @param participant participant　wallet address
     */
-    function addParticipantCount(address user) internal {
-        if (!_isParticipated[index][user]) {
+    function addParticipantCount(address participant) internal {
+        if (!_isParticipated[index][participant]) {
             // lottery purchaser add participants
             participantCount[index] += 1;
+            _isParticipated[index][participant] = true;
         }
-
-        _isParticipated[index][user] = true;
     }
 
     /**
     * @notice create random sending rule
     * @param _ratio random sending rule ratio
     * @param _sendingCount random sending rule sending count
+    * @dev This function can only be executed immediately after the contract is created, in order to prevent the rules from being changed after the lottery ticket is purchased.
     */
     function createRandomSendingRule(uint _ratio, uint _sendingCount) public
         onlyByStatus(Status.RULE_SETTING)
@@ -203,6 +219,7 @@ contract Lottery is Ownable, ILottery {
     * @notice create definitely sending rule
     * @param _ratio definitely sending rule ratio
     * @param _destinationAddress destination address
+    * @dev This function can only be executed immediately after the contract is created, in order to prevent the rules from being changed after the lottery ticket is purchased.
     */
     function createDefinitelySendingRule(
         uint _ratio,
@@ -224,62 +241,104 @@ contract Lottery is Ownable, ILottery {
         definitelySendingRuleRatioTotalAmount = definitelySendingRuleRatioTotalAmount + ratioAmount(_ratio);
     }
 
+    /**
+    * @notice set seller commission ratio
+    * @param _sellerCommissionRatio seller commision ratio
+    * @dev This function can only be executed immediately after the contract is created, in order to prevent the rules from being changed after the lottery ticket is purchased.
+    */
     function setSellerCommissionRatio(uint _sellerCommissionRatio) public onlyByStatus(Status.RULE_SETTING) onlyOwner noZero(_sellerCommissionRatio) canCreateSendingRule(_sellerCommissionRatio, 1) {
         sellerCommissionRatio = _sellerCommissionRatio;
         sellerCommissionRatioTotalAmount = ratioAmount(sellerCommissionRatio);
     }
 
+    /**
+    * @notice set random value
+    * @param _randomValue random value
+    * @dev This function can only be executed with a random value generator contract. This random value is used to determine lottery winners. After the random value is set, change status to token sending.
+    */
     function setRandomValue(uint _randomValue) external {
         require(msg.sender == address(randomValueGenerator));
         randomValue[index] = _randomValue;
         statusToTokenSending();
     }
 
+    /**
+    * @notice set random value generator
+    * @param _randomValueGenerator random value generator contract address
+    * @dev After deploying the random value generator contract, the owner sets it.
+    */
     function setRandomValueGenerator(IRandomValueGenerator _randomValueGenerator) external onlyOwner onlyByStatus(Status.RULE_SETTING) {
         randomValueGenerator = _randomValueGenerator;
     }
 
+    /**
+    * @notice require is destination address
+    * @param _destinationAddress destination address
+    */
     modifier requireIsDestinationAddress(address _destinationAddress) {
         require(isDestinationAddress[_destinationAddress] == false, "This address has already been added.");
         _;
     }
 
+    /**
+    * @param number number
+    */
     modifier noZero(uint number) {
         require(number > 0, "noZero");
         _;
 
     }
 
+    /**
+    * @param number number
+    */
     modifier requireUnberMaxCount(uint number) {
         require(number < MAX_COUNT, "requireUnberMaxCount");
         _;
     }
 
+    /**
+    * @param _status status
+    */
     modifier onlyByStatus(Status _status) {
         require(_status == status, "onlyByStatus");
         _;
     }
 
+    /**
+    * @notice check token sending status
+    * @param _tokenSengingStatus token senging status
+    * @dev The _tokenSengingStatus passed in the argument and the contract's tokenSengingStatus must be the same.
+    */
     modifier onlyByTokenSendingStatus(TokenSengingStatus _tokenSengingStatus) {
         require(_tokenSengingStatus == tokenSengingStatus, "onlyByTokenSendingStatus");
         _;
     }
 
-    modifier requireRandomSendingRules() {
-        require(lastRandomSendingRuleId > 0, "require random sending rules");
-        _;
-    }
-
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     modifier requireRandomValue() {
         require(randomValue[index] != 0, "requireRandomValue");
         _;
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param sendingCount sending count
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     modifier requireUnderMaxSendingCount(uint sendingCount) {
         require(MAX_SENDING_COUNT >= sendingCount, "requireUnderMaxSendingCount");
         _;
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param ratio ratio
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     modifier requireGreaterThanLastRandomSendingRuleRatio(uint ratio) {
         require(randomSendingRuleRatio[lastRandomSendingRuleId] <= ratio, "requireGreaterThanLastRandomSendingRuleRatio");
         _;
@@ -289,6 +348,7 @@ contract Lottery is Ownable, ILottery {
     * @notice Can it create a sending rule
     * @param _ratio Sending Rule ratio
     * @param _sendingCount SendingRule sending count
+    * @dev 開発者向けに@noticeよりも詳細な説明
     */
     modifier canCreateSendingRule(uint _ratio, uint _sendingCount) {
         uint totalAmount = randomSendingRuleRatioTotalAmount + definitelySendingRuleRatioTotalAmount + sellerCommissionRatioTotalAmount + (ratioAmount(_ratio) * _sendingCount);
@@ -299,6 +359,10 @@ contract Lottery is Ownable, ILottery {
         _;
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     modifier requireRule100Percentage() {
         uint totalAmount = randomSendingRuleRatioTotalAmount + definitelySendingRuleRatioTotalAmount + sellerCommissionRatioTotalAmount;
         require(
@@ -308,45 +372,105 @@ contract Lottery is Ownable, ILottery {
         _;
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param _ticketIdsIndex index of ticket ids
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function ticketIdByTicketIds(uint _ticketIdsIndex) internal view returns(uint) {
         return _ticketIds[index][msg.sender][_ticketIdsIndex];
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param _index index
+    * @param ticketId ticket id
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function ticketCount(uint _index, uint ticketId) external view returns(uint) {
         return _ticketCount[_index][ticketId];
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param _index index
+    * @param ticketId ticket id
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function ticketLastNumber(uint _index, uint ticketId) external view returns(uint) {
         return _ticketLastNumber[_index][ticketId];
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param _index index
+    * @param ticketId ticket id
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function ticketReceivedAt(uint _index, uint ticketId) external view returns(uint) {
         return _ticketReceivedAt[_index][ticketId];
     }
 
-    function isParticipated(uint _index, address user) external view returns(bool) {
-        return _isParticipated[_index][user];
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param _index index
+    * @param ticketId ticket id
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
+    function ticketHolder(uint _index, uint ticketId) external view returns(address) {
+        return _ticketHolder[_index][ticketId];
     }
 
-    function ticketIds(uint _index, address user) external view returns(uint[] memory) {
-        return _ticketIds[_index][user];
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param _index index
+    * @param participant participant
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
+    function ticketIds(uint _index, address participant) external view returns(uint[] memory) {
+        return _ticketIds[_index][participant];
     }
 
-    function ticketHolder(uint _index, uint _ticketId) external view returns(address) {
-        return _ticketHolder[_index][_ticketId];
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param _index index
+    * @param participant participant
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
+    function isParticipated(uint _index, address participant) external view returns(bool) {
+        return _isParticipated[_index][participant];
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param _index index
+    * @param _sellerId seller id
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function seller(uint _index, uint _sellerId) external view returns(address) {
         return _sellers[_index][_sellerId];
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param _index index
+    * @param _seller seller wallet address
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function isSeller(uint _index, address _seller) external view returns(bool) {
         return _isSeller[_index][_seller];
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param _index index
+    * @param _seller seller wallet address
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function tokenAmountToSeller(uint _index, address _seller) external view returns(uint) {
         return _tokenAmountToSeller[_index][_seller];
     }
+
 
     /**
     * @notice ERC20 tokens collected by this contract
@@ -356,14 +480,19 @@ contract Lottery is Ownable, ILottery {
     }
 
     /**
-    * @notice 
+    * @notice 関数が何を行うのかを説明する
+    * @param _ratio ratio
+    * @param _sendingCount sending count
+    * @dev 開発者向けに@noticeよりも詳細な説明
     */
     function randomSendingRatioAmount(uint _ratio, uint _sendingCount) private pure returns(uint) {
         return ratioAmount(_ratio) * _sendingCount;
     }
 
     /**
-    * @notice 
+    * @notice 関数が何を行うのかを説明する
+    * @param _ratio ratio
+    * @dev 開発者向けに@noticeよりも詳細な説明
     */
     function ratioAmount(uint _ratio) private pure returns(uint) {
         return baseTokenAmount / _ratio;
@@ -372,7 +501,8 @@ contract Lottery is Ownable, ILottery {
     // change status ------>
 
     /**
-    * @notice Change the status to accepting to be able to buy tickets.
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
     */
     function statusToAccepting() public onlyByStatus(Status.DONE) {
         if (index == 1) { 
@@ -390,6 +520,10 @@ contract Lottery is Ownable, ILottery {
         }
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function statusToRandomValueGetting() public onlyByStatus(Status.ACCEPTING) {
         require(closeTimestamp < block.timestamp, "after closeTimestamp");
         status = Status.RANDOM_VALUE_GETTING;
@@ -397,6 +531,10 @@ contract Lottery is Ownable, ILottery {
         randomValueGenerator.requestRandomWords();
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function statusToTokenSending() private {
         tokenSengingStatus = TokenSengingStatus.SEND_TO_SELLER;
         status = Status.TOKEN_SENDING;
@@ -406,12 +544,21 @@ contract Lottery is Ownable, ILottery {
         currentSellerId = 1;
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function statusToDone() public onlyByStatus(Status.TOKEN_SENDING) {
         status = Status.DONE;
         index++;
     }
 
-    function complatedRuleSetting() public onlyOwner onlyByStatus(Status.RULE_SETTING) requireRule100Percentage requireRandomSendingRules {
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
+    function complatedRuleSetting() public onlyOwner onlyByStatus(Status.RULE_SETTING) requireRule100Percentage {
+        require(lastRandomSendingRuleId > 0, "require random sending rules");
         require(address(randomValueGenerator) != address(0));
         status = Status.DONE;
     }
@@ -419,6 +566,11 @@ contract Lottery is Ownable, ILottery {
 
     // token sending ---------->
     // The cycle of token sending is: transfer of tokens to the SELLER, random transfer to the drawer, and  definitely sending.
+
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function sendToSeller() public onlyByStatus(Status.TOKEN_SENDING) onlyByTokenSendingStatus(TokenSengingStatus.SEND_TO_SELLER) requireRandomValue {
         require(_sellers[index][currentSellerId] != address(0));
         address _seller = _sellers[index][currentSellerId];
@@ -431,10 +583,19 @@ contract Lottery is Ownable, ILottery {
         }
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param number number
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function convertedNumber(uint number) private view returns (uint) {
         return uint(keccak256(abi.encode(number))) % _ticketLastNumber[index][ticketLastId[index]];
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function convertRandomValueToWinnerTicketNumber() public view returns (uint) {
         uint uniquRandamValue = randomValue[index] + convertedNumber(currentRandomSendingRuleId * MAX_SENDING_COUNT) + convertedNumber(currentRandomSendingRuleSendingCount);
         uniquRandamValue = convertedNumber(uniquRandamValue);
@@ -445,11 +606,22 @@ contract Lottery is Ownable, ILottery {
         }
     }
 
-    function randomSend(uint _ticketId) public onlyByStatus(Status.TOKEN_SENDING) onlyByTokenSendingStatus(TokenSengingStatus.RANDOM_SEND) {
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @param _ticketId ticket id
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
+    function randomSend(uint _ticketId) public
+        onlyByStatus(Status.TOKEN_SENDING)
+        onlyByTokenSendingStatus(TokenSengingStatus.RANDOM_SEND)
+    {
         require(ticketLastId[index] >= _ticketId);
         require(_ticketId > 0, "require over then 0");
         uint winnerTicketNumber = convertRandomValueToWinnerTicketNumber();
-        require(_ticketLastNumber[index][_ticketId - 1] < winnerTicketNumber && (_ticketLastNumber[index][_ticketId - 1] + _ticketCount[index][_ticketId]) >= winnerTicketNumber);
+        require(
+            _ticketLastNumber[index][_ticketId - 1] < winnerTicketNumber &&
+            (_ticketLastNumber[index][_ticketId - 1] + _ticketCount[index][_ticketId]) >= winnerTicketNumber
+        );
 
         uint tokenAmount = totalSupplyByIndex[index].div(randomSendingRuleRatio[currentRandomSendingRuleId]);
         erc20.transfer(_ticketHolder[index][_ticketId], tokenAmount);
@@ -457,6 +629,10 @@ contract Lottery is Ownable, ILottery {
         nextToRandomSend();
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function nextToRandomSend() private {
         // When all the sending_counts have been transferred, the next random sending is performed.
         if (currentRandomSendingRuleSendingCount == randomSendingRuleSendingCount[currentRandomSendingRuleId]) {
@@ -474,6 +650,10 @@ contract Lottery is Ownable, ILottery {
         }
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function definitelySend() public onlyByStatus(Status.TOKEN_SENDING) onlyByTokenSendingStatus(TokenSengingStatus.DEFINITELY_SEND) {
         // tokenAmount Calculation
         uint tokenAmount = totalSupplyByIndex[index].div(definitelySendingRuleRatio[currentDefinitelySendingId]);
@@ -483,6 +663,10 @@ contract Lottery is Ownable, ILottery {
         nextToDefinitelySend();
     }
 
+    /**
+    * @notice 関数が何を行うのかを説明する
+    * @dev 開発者向けに@noticeよりも詳細な説明
+    */
     function nextToDefinitelySend() private {
         if (lastDefinitelySendingRuleId == currentDefinitelySendingId) {
             // finished
