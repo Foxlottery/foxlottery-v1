@@ -328,8 +328,8 @@ describe("Lottery", function () {
       expect(buyerAmount).to.equal("70000000000000000000");
 
       // sellerの登録されていること
-      const sellers = await this.weeklyLottery.sellers(index);
-      expect(sellers[0]).to.equal(seller.address);
+      const _seller = await this.weeklyLottery.seller(index, 1);
+      expect(_seller).to.equal(seller.address);
       let isSeller = await this.weeklyLottery.isSeller(index, seller.address);
       expect(isSeller).to.equal(true);
       isSeller = await this.weeklyLottery.isSeller(index, user.address);
@@ -426,8 +426,8 @@ describe("Lottery", function () {
       expect(buyerAmount).to.equal("70000000000000000000");
 
       // sellerの登録されていること
-      const sellers = await this.weeklyLottery.sellers(index);
-      expect(sellers[0]).to.equal(seller.address);
+      const _seller = await this.weeklyLottery.seller(index, 1);
+      expect(_seller).to.equal(seller.address);
       let isSeller = await this.weeklyLottery.isSeller(index, seller.address);
       expect(isSeller).to.equal(true);
       isSeller = await this.weeklyLottery.isSeller(index, user.address);
@@ -535,8 +535,8 @@ describe("Lottery", function () {
       expect(buyerAmount).to.equal("70000000000000000000");
 
       // sellerの登録されていること
-      const sellers = await this.weeklyLottery.sellers(index);
-      expect(sellers[0]).to.equal(seller.address);
+      const _seller = await this.weeklyLottery.seller(index, 1);
+      expect(_seller).to.equal(seller.address);
       let isSeller = await this.weeklyLottery.isSeller(index, seller.address);
       expect(isSeller).to.equal(true);
       isSeller = await this.weeklyLottery.isSeller(index, user.address);

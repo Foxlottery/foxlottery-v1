@@ -43,6 +43,7 @@ contract Lottery is Ownable, ILottery {
     // sellerCommission
     uint public sellerCommissionRatio;
     uint public sellerCommissionRatioTotalAmount;
+
     // RandomSendingRule
     uint public lastRandomSendingRuleId;
     mapping(uint => uint) public randomSendingRuleRatio;
@@ -50,6 +51,7 @@ contract Lottery is Ownable, ILottery {
     uint public randomSendingRuleRatioTotalAmount;
     uint public currentRandomSendingRuleId;
     uint public currentRandomSendingRuleSendingCount;
+
     /// definitelySendingRule
     uint public lastDefinitelySendingRuleId;
     mapping(uint => address) public definitelySendingRuleAddress;
@@ -80,9 +82,9 @@ contract Lottery is Ownable, ILottery {
     mapping(uint => mapping(address => bool)) private _isParticipated;
 
     // seller
-    uint public sendToSellerIndex;
+    uint public currentSellerId;
     mapping(uint => uint) public sellerLastId;
-    mapping(uint => address[]) public _sellers;
+    mapping(uint => mapping(uint => address)) private _sellers;
     mapping(uint => mapping(address => bool)) private _isSeller;
     mapping(uint => mapping(address => uint)) private _tokenAmountToSeller;
 
@@ -116,10 +118,10 @@ contract Lottery is Ownable, ILottery {
      /**
     * @notice buy lottery ticket
     * @param __ticketCount Amount of lottery tickets
-    * @param seller ticket seller
+    * @param _seller ticket seller
     * @dev When you buy a lottery ticket, you lock the funds in a smart contract wallet.
     */
-    function buyTicket(uint256 __ticketCount, address seller) public payable onlyByStatus(Status.ACCEPTING) requireUnberMaxCount(_ticketIds[index][msg.sender].length) {
+    function buyTicket(uint256 __ticketCount, address _seller) public payable onlyByStatus(Status.ACCEPTING) requireUnberMaxCount(_ticketIds[index][msg.sender].length) {
         uint tokenAmount = __ticketCount * ticketPrice;
         require(erc20.balanceOf(msg.sender) >= tokenAmount, "Not enough erc20 tokens.");
 
@@ -138,12 +140,13 @@ contract Lottery is Ownable, ILottery {
         // Lock the Lottery in the contract
         erc20.transferFrom(msg.sender, address(this), tokenAmount);
 
-        if (!_isSeller[index][seller]) {
-            _isSeller[index][seller] = true;
-            _sellers[index].push(seller);
-        }
         if (sellerCommissionRatio > 0) {
-          _tokenAmountToSeller[index][seller] = _tokenAmountToSeller[index][seller] + tokenAmount.div(sellerCommissionRatio);
+          if (!_isSeller[index][_seller]) {
+            _isSeller[index][_seller] = true;
+            sellerLastId[index]++;
+            _sellers[index][sellerLastId[index]] = _seller;
+          }
+          _tokenAmountToSeller[index][_seller] = _tokenAmountToSeller[index][_seller] + tokenAmount.div(sellerCommissionRatio);
         }
         emit Ticket(ticketLastId[index]);
     }
@@ -333,16 +336,16 @@ contract Lottery is Ownable, ILottery {
         return _ticketHolder[_index][_ticketId];
     }
 
-    function sellers(uint _index) external view returns(address[] memory) {
-        return _sellers[_index];
+    function seller(uint _index, uint _sellerId) external view returns(address) {
+        return _sellers[_index][_sellerId];
     }
 
-    function isSeller(uint _index, address seller) external view returns(bool) {
-        return _isSeller[_index][seller];
+    function isSeller(uint _index, address _seller) external view returns(bool) {
+        return _isSeller[_index][_seller];
     }
 
-    function tokenAmountToSeller(uint _index, address seller) external view returns(uint) {
-        return _tokenAmountToSeller[_index][seller];
+    function tokenAmountToSeller(uint _index, address _seller) external view returns(uint) {
+        return _tokenAmountToSeller[_index][_seller];
     }
 
     /**
@@ -400,6 +403,7 @@ contract Lottery is Ownable, ILottery {
         currentRandomSendingRuleId = 1;
         currentRandomSendingRuleSendingCount = 1;
         currentDefinitelySendingId = 1;
+        currentSellerId = 1;
     }
 
     function statusToDone() public onlyByStatus(Status.TOKEN_SENDING) {
@@ -416,16 +420,15 @@ contract Lottery is Ownable, ILottery {
     // token sending ---------->
     // The cycle of token sending is: transfer of tokens to the SELLER, random transfer to the drawer, and  definitely sending.
     function sendToSeller() public onlyByStatus(Status.TOKEN_SENDING) onlyByTokenSendingStatus(TokenSengingStatus.SEND_TO_SELLER) requireRandomValue {
-        require(_sellers[index][sendToSellerIndex] != address(0));
-        address _seller = _sellers[index][sendToSellerIndex];
+        require(_sellers[index][currentSellerId] != address(0));
+        address _seller = _sellers[index][currentSellerId];
         uint tokenAmount = _tokenAmountToSeller[index][_seller];
-        if ((_sellers[index].length - 1) == sendToSellerIndex) {
-            sendToSellerIndex = 0;
+        erc20.transfer(_seller, tokenAmount);
+        if (sellerLastId[index] == currentSellerId) {
             tokenSengingStatus = TokenSengingStatus.RANDOM_SEND;
         } else {
-            sendToSellerIndex++;
+            currentSellerId++;
         }
-        erc20.transfer(_seller, tokenAmount);
     }
 
     function convertedNumber(uint number) private view returns (uint) {
