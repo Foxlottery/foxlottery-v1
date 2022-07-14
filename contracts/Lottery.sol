@@ -91,6 +91,8 @@ contract Lottery is Ownable, ILottery {
 
     IRandomValueGenerator public randomValueGenerator;
 
+    event Ticket(uint ticketLastId);
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -143,6 +145,7 @@ contract Lottery is Ownable, ILottery {
         if (sellerCommissionRatio > 0) {
           _tokenAmountToSeller[index][seller] = _tokenAmountToSeller[index][seller] + tokenAmount.div(sellerCommissionRatio);
         }
+        emit Ticket(ticketLastId[index]);
     }
 
     function sendTicket(uint ticketIdsIndex, address to) public onlyByStatus(Status.ACCEPTING) onlyOwner requireUnberMaxCount(_ticketIds[index][to].length) {
