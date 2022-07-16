@@ -28,11 +28,13 @@ async function approveAndBuyTicket(
   weeklyLottery: any,
   user: any,
   tokenAmount: any,
-  _ticketCount: any,
+  _ticketNumberRange: any,
   seller: any
 ) {
   await TestUSD.connect(user).approve(weeklyLottery.address, tokenAmount);
-  await weeklyLottery.connect(user).buyTicket(_ticketCount, seller.address);
+  await weeklyLottery
+    .connect(user)
+    .buyTicket(_ticketNumberRange, seller.address);
 }
 
 async function printData(
@@ -134,8 +136,8 @@ describe("RandomValueGeneratorMock", function () {
 
   it("send test", async function () {
     const ticketPrice = await this.weeklyLottery.ticketPrice();
-    const _ticketCount = 3;
-    const tokenAmount = String(ticketPrice * _ticketCount);
+    const _ticketNumberRange = 3;
+    const tokenAmount = String(ticketPrice * _ticketNumberRange);
 
     const seller = this.signers[10];
 
@@ -145,7 +147,7 @@ describe("RandomValueGeneratorMock", function () {
         this.weeklyLottery,
         user,
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         seller
       );
     }
@@ -169,9 +171,12 @@ describe("RandomValueGeneratorMock", function () {
     let tokenSengingStatus = await this.weeklyLottery.tokenSengingStatus();
     expect(tokenSengingStatuses[tokenSengingStatus]).to.equal("SEND_TO_SELLER");
 
+    let currentSellerId = await this.weeklyLottery.currentSellerId();
+    expect(currentSellerId).to.equal(1);
+
     await this.weeklyLottery.sendToSeller();
-    const sendToSellerIndex = await this.weeklyLottery.sendToSellerIndex();
-    expect(sendToSellerIndex).to.equal(0);
+    currentSellerId = await this.weeklyLottery.currentSellerId();
+    expect(currentSellerId).to.equal(1);
 
     tokenSengingStatus = await this.weeklyLottery.tokenSengingStatus();
     expect(tokenSengingStatuses[tokenSengingStatus]).to.equal("RANDOM_SEND");

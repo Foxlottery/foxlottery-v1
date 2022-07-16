@@ -26,11 +26,13 @@ async function approveAndBuyTicket(
   weeklyLottery: any,
   user: any,
   tokenAmount: any,
-  _ticketCount: any,
+  _ticketNumberRange: any,
   seller: any
 ) {
   await TestUSD.connect(user).approve(weeklyLottery.address, tokenAmount);
-  await weeklyLottery.connect(user).buyTicket(_ticketCount, seller.address);
+  await weeklyLottery
+    .connect(user)
+    .buyTicket(_ticketNumberRange, seller.address);
 }
 
 async function printData(
@@ -246,7 +248,7 @@ describe("Lottery", function () {
         index,
         ticketLastId.toString()
       );
-      const ticketCount = await this.weeklyLottery.ticketCount(
+      const ticketNumberRange = await this.weeklyLottery.ticketNumberRange(
         index,
         ticketLastId.toString()
       );
@@ -262,7 +264,7 @@ describe("Lottery", function () {
       expect(this.TestUSD.address).to.equal(erc20);
       expect(ticketLastId).to.equal("0");
       expect(ticketLastNumber).to.equal("0");
-      expect(ticketCount).to.equal("0");
+      expect(ticketNumberRange).to.equal("0");
       expect(isParticipated).to.equal(false);
       expect(participantCount).to.equal("0");
     });
@@ -270,8 +272,8 @@ describe("Lottery", function () {
     it("Owner should buy ticket", async function () {
       const user = this.signers[0];
       const ticketPrice = await this.weeklyLottery.ticketPrice();
-      const _ticketCount = 3;
-      const tokenAmount = String(ticketPrice * _ticketCount);
+      const _ticketNumberRange = 3;
+      const tokenAmount = String(ticketPrice * _ticketNumberRange);
 
       const seller = this.signers[10];
       await approveAndBuyTicket(
@@ -279,7 +281,7 @@ describe("Lottery", function () {
         this.weeklyLottery,
         user,
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         seller
       );
 
@@ -294,12 +296,12 @@ describe("Lottery", function () {
       );
       expect(ticketLastNumber).to.equal("3");
 
-      // TicketCount must be added.
-      const ticketCount = await this.weeklyLottery.ticketCount(
+      // ticketNumberRange must be added.
+      const ticketNumberRange = await this.weeklyLottery.ticketNumberRange(
         index,
         ticketLastId.toString()
       );
-      expect(ticketCount).to.equal("3");
+      expect(ticketNumberRange).to.equal("3");
 
       // isParticipated must be updated to true
       const isParticipated = await this.weeklyLottery.isParticipated(
@@ -334,16 +336,16 @@ describe("Lottery", function () {
       expect(isSeller).to.equal(true);
       isSeller = await this.weeklyLottery.isSeller(index, user.address);
       expect(isSeller).to.equal(false);
-      let tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+      let tokenAmountOfSeller = await this.weeklyLottery.tokenAmountOfSeller(
         index,
         seller.address
       );
-      expect(tokenAmountToSeller).to.equal("1500000000000000000");
-      tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+      expect(tokenAmountOfSeller).to.equal("1500000000000000000");
+      tokenAmountOfSeller = await this.weeklyLottery.tokenAmountOfSeller(
         index,
         user.address
       );
-      expect(tokenAmountToSeller).to.equal(0);
+      expect(tokenAmountOfSeller).to.equal(0);
 
       // totalSupply
       const totalSupply = await this.weeklyLottery.totalSupply();
@@ -354,8 +356,8 @@ describe("Lottery", function () {
 
     it("Two user should buy ticket", async function () {
       const ticketPrice = await this.weeklyLottery.ticketPrice();
-      const _ticketCount = 3;
-      const tokenAmount = String(ticketPrice * _ticketCount);
+      const _ticketNumberRange = 3;
+      const tokenAmount = String(ticketPrice * _ticketNumberRange);
 
       const user = this.signers[1];
       const seller = this.signers[10];
@@ -365,7 +367,7 @@ describe("Lottery", function () {
         this.weeklyLottery,
         this.signers[0],
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         seller
       );
       // second
@@ -374,7 +376,7 @@ describe("Lottery", function () {
         this.weeklyLottery,
         this.signers[1],
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         seller
       );
 
@@ -389,12 +391,12 @@ describe("Lottery", function () {
       );
       expect(ticketLastNumber).to.equal("6");
 
-      // ticketCount must be added.
-      const ticketCount = await this.weeklyLottery.ticketCount(
+      // ticketNumberRange must be added.
+      const ticketNumberRange = await this.weeklyLottery.ticketNumberRange(
         index,
         ticketLastId.toString()
       );
-      expect(ticketCount).to.equal("3");
+      expect(ticketNumberRange).to.equal("3");
 
       // isParticipated must be updated.
       const isParticipated = await this.weeklyLottery.isParticipated(
@@ -432,16 +434,16 @@ describe("Lottery", function () {
       expect(isSeller).to.equal(true);
       isSeller = await this.weeklyLottery.isSeller(index, user.address);
       expect(isSeller).to.equal(false);
-      let tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+      let tokenAmountOfSeller = await this.weeklyLottery.tokenAmountOfSeller(
         index,
         seller.address
       );
-      expect(tokenAmountToSeller).to.equal("3000000000000000000");
-      tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+      expect(tokenAmountOfSeller).to.equal("3000000000000000000");
+      tokenAmountOfSeller = await this.weeklyLottery.tokenAmountOfSeller(
         index,
         user.address
       );
-      expect(tokenAmountToSeller).to.equal(0);
+      expect(tokenAmountOfSeller).to.equal(0);
 
       const totalSupply = await this.weeklyLottery.totalSupply();
       expect(totalSupply).to.equal("60000000000000000000");
@@ -451,8 +453,8 @@ describe("Lottery", function () {
 
     it("Three user should buy ticket", async function () {
       const ticketPrice = await this.weeklyLottery.ticketPrice();
-      const _ticketCount = 3;
-      const tokenAmount = String(ticketPrice * _ticketCount);
+      const _ticketNumberRange = 3;
+      const tokenAmount = String(ticketPrice * _ticketNumberRange);
 
       const user = this.signers[2];
       const seller = this.signers[10];
@@ -462,7 +464,7 @@ describe("Lottery", function () {
         this.weeklyLottery,
         this.signers[0],
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         seller
       );
       // second
@@ -471,7 +473,7 @@ describe("Lottery", function () {
         this.weeklyLottery,
         this.signers[1],
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         seller
       );
       // third
@@ -480,7 +482,7 @@ describe("Lottery", function () {
         this.weeklyLottery,
         this.signers[2],
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         seller
       );
 
@@ -495,12 +497,12 @@ describe("Lottery", function () {
       );
       expect(ticketLastNumber).to.equal("9");
 
-      // ticketCount must be added.
-      const ticketCount = await this.weeklyLottery.ticketCount(
+      // ticketNumberRange must be added.
+      const ticketNumberRange = await this.weeklyLottery.ticketNumberRange(
         index,
         ticketLastId.toString()
       );
-      expect(ticketCount).to.equal("3");
+      expect(ticketNumberRange).to.equal("3");
 
       // isParticipated must be updated.
       const isParticipated = await this.weeklyLottery.isParticipated(
@@ -541,16 +543,16 @@ describe("Lottery", function () {
       expect(isSeller).to.equal(true);
       isSeller = await this.weeklyLottery.isSeller(index, user.address);
       expect(isSeller).to.equal(false);
-      let tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+      let tokenAmountOfSeller = await this.weeklyLottery.tokenAmountOfSeller(
         index,
         seller.address
       );
-      expect(tokenAmountToSeller).to.equal("4500000000000000000");
-      tokenAmountToSeller = await this.weeklyLottery.tokenAmountToSeller(
+      expect(tokenAmountOfSeller).to.equal("4500000000000000000");
+      tokenAmountOfSeller = await this.weeklyLottery.tokenAmountOfSeller(
         index,
         user.address
       );
-      expect(tokenAmountToSeller).to.equal(0);
+      expect(tokenAmountOfSeller).to.equal(0);
 
       const totalSupply = await this.weeklyLottery.totalSupply();
       expect(totalSupply).to.equal("90000000000000000000");
@@ -560,8 +562,8 @@ describe("Lottery", function () {
 
     it("The same user buys ticket again.", async function () {
       const ticketPrice = await this.weeklyLottery.ticketPrice();
-      const _ticketCount = 3;
-      const tokenAmount = String(ticketPrice * _ticketCount);
+      const _ticketNumberRange = 3;
+      const tokenAmount = String(ticketPrice * _ticketNumberRange);
 
       const user = this.signers[0];
       // first
@@ -570,7 +572,7 @@ describe("Lottery", function () {
         this.weeklyLottery,
         this.signers[0],
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         this.signers[10]
       );
       // second
@@ -579,7 +581,7 @@ describe("Lottery", function () {
         this.weeklyLottery,
         this.signers[1],
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         this.signers[10]
       );
       // third
@@ -588,7 +590,7 @@ describe("Lottery", function () {
         this.weeklyLottery,
         this.signers[2],
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         this.signers[10]
       );
       // The same user buys ticket again.
@@ -597,7 +599,7 @@ describe("Lottery", function () {
         this.weeklyLottery,
         this.signers[0], // same user
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         this.signers[10]
       );
 
@@ -612,12 +614,12 @@ describe("Lottery", function () {
       );
       expect(ticketLastNumber).to.equal("12");
 
-      // ticketCount must be added.
-      const ticketCount = await this.weeklyLottery.ticketCount(
+      // ticketNumberRange must be added.
+      const ticketNumberRange = await this.weeklyLottery.ticketNumberRange(
         index,
         ticketLastId.toString()
       );
-      expect(ticketCount).to.equal("3");
+      expect(ticketNumberRange).to.equal("3");
 
       // isParticipated must be updated.
       const isParticipated = await this.weeklyLottery.isParticipated(
@@ -680,15 +682,15 @@ describe("Lottery", function () {
     it("Owner should send ticket", async function () {
       const user = this.signers[0];
       const ticketPrice = await this.weeklyLottery.ticketPrice();
-      const _ticketCount = 3;
-      const tokenAmount = String(ticketPrice * _ticketCount);
+      const _ticketNumberRange = 3;
+      const tokenAmount = String(ticketPrice * _ticketNumberRange);
 
       await approveAndBuyTicket(
         this.TestUSD,
         this.weeklyLottery,
         user,
         tokenAmount,
-        _ticketCount,
+        _ticketNumberRange,
         this.signers[10]
       );
 
@@ -717,12 +719,12 @@ describe("Lottery", function () {
       );
       expect(ticketLastNumber).to.equal("3");
 
-      // ticketCount must be added.
-      const ticketCount = await this.weeklyLottery.ticketCount(
+      // ticketNumberRange must be added.
+      const ticketNumberRange = await this.weeklyLottery.ticketNumberRange(
         index,
         ticketLastId.toString()
       );
-      expect(ticketCount).to.equal("3");
+      expect(ticketNumberRange).to.equal("3");
 
       // isParticipated must be updated.
       const isParticipated = await this.weeklyLottery.isParticipated(
@@ -739,7 +741,7 @@ describe("Lottery", function () {
       expect(totalSupply).to.equal("30000000000000000000");
     });
 
-    it("Non-Owner can not send ticket", async function () {
+    it("Error when remitting a ticket of ticketIdsIndex that is not held.", async function () {
       const user = this.signers[1];
       const ticketPrice = await this.weeklyLottery.ticketPrice();
       const _ticketCount = 3;
@@ -755,11 +757,22 @@ describe("Lottery", function () {
       );
 
       await expect(
-        this.weeklyLottery.connect(user).sendTicket(0, this.signers[2].address)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+        this.weeklyLottery.connect(user).sendTicket(2, this.signers[2].address)
+      ).to.be.revertedWith("");
 
       const totalSupply = await this.weeklyLottery.totalSupply();
       expect(totalSupply).to.equal("30000000000000000000");
+    });
+
+    it("Error when remitting a ticket that is not held.", async function () {
+      const user = this.signers[1];
+
+      await expect(
+        this.weeklyLottery.connect(user).sendTicket(0, this.signers[2].address)
+      ).to.be.revertedWith("You must be have been ticket");
+
+      const totalSupply = await this.weeklyLottery.totalSupply();
+      expect(totalSupply).to.equal("0");
     });
   });
 });
