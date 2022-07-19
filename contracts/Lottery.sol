@@ -352,7 +352,7 @@ contract Lottery is Ownable, ILottery {
     * @dev If totalAmount is greater than baseTokenAmount, the total ratio is greater than 100%.
     */
     modifier canCreateSendingRule(uint _ratio, uint _sendingCount) {
-        uint totalAmount = randomSendingRuleRatioTotalAmount + definitelySendingRuleRatioTotalAmount + sellerCommissionRatioTotalAmount + (ratioAmount(_ratio) * _sendingCount);
+        uint totalAmount = currentTotalAmount() + (ratioAmount(_ratio) * _sendingCount);
         require(
             totalAmount <= baseTokenAmount, 
             "Only less than 100%"
@@ -360,17 +360,8 @@ contract Lottery is Ownable, ILottery {
         _;
     }
 
-    /**
-    * @notice require rule total ratio 100%
-    * @dev This modifier is required to execute the complatedRuleSetting method. The total ratio must be 100% when complated Rule Setting.
-    */
-    modifier requireRuleTotalRatio100Percentage() {
-        uint totalAmount = randomSendingRuleRatioTotalAmount + definitelySendingRuleRatioTotalAmount + sellerCommissionRatioTotalAmount;
-        require(
-            totalAmount == baseTokenAmount, 
-            "require rule is 100%"
-        );
-        _;
+    function currentTotalAmount() private view returns(uint) {
+        return randomSendingRuleRatioTotalAmount + definitelySendingRuleRatioTotalAmount + sellerCommissionRatioTotalAmount;
     }
 
     /**
@@ -544,7 +535,9 @@ contract Lottery is Ownable, ILottery {
     * When status is done, it is possible to change status to ACCEPTING.
     * 
     */
-    function complatedRuleSetting() public onlyOwner onlyByStatus(Status.RULE_SETTING) requireRuleTotalRatio100Percentage {
+    function complatedRuleSetting() public onlyOwner onlyByStatus(Status.RULE_SETTING) {
+        // Required to execute the complatedRuleSetting method. The total ratio must be 100% when complated Rule Setting.
+        require(currentTotalAmount() == baseTokenAmount, "require rule is 100%");
         require(lastRandomSendingRuleId > 0, "require random sending rules");
         require(address(randomValueGenerator) != address(0));
         status = Status.DONE;

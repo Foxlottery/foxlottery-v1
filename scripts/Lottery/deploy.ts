@@ -38,6 +38,7 @@ async function main() {
   if (config.lottery !== null) {
     lottery = await lotteryFactory.attach(config.lottery);
   } else {
+    console.log("start lottery deploy");
     lottery = await lotteryFactory.deploy(
       config.name,
       config.symbol,
@@ -46,26 +47,28 @@ async function main() {
       config.cycle,
       config.closeTimestamp
     );
+    await lottery.deployed();
     await sleep(5000);
+    console.log("start random value generator deploy");
     const randomValueGenerator = await randomValueGeneratorFactory.deploy(
       lottery.address,
       config.subscriptionId,
       config.vrfCoordinator,
       config.keyHash
     );
-    await sleep(5000);
-    await lottery.setRandomValueGenerator(randomValueGenerator.address);
-    await lottery.deployed();
     await randomValueGenerator.deployed();
+    await sleep(15000);
+    console.log("set random value generator to lottery");
+    await lottery.setRandomValueGenerator(randomValueGenerator.address);
   }
-  await sleep(5000);
+  await sleep(15000);
 
   console.log("setSellerCommissionRatio:", config.sellerCommissionRatio);
   await lottery.setSellerCommissionRatio(config.sellerCommissionRatio);
 
   // set rule
   for (const rule of config.randomSendingRules) {
-    await sleep(5000);
+    await sleep(15000);
     console.log(rule);
     await lottery.createRandomSendingRule(rule.raito, rule.sendingCount);
   }
